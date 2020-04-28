@@ -1,0 +1,35 @@
+#!/bin/bash
+
+RT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+sfm=$RT/subimage_from_mask.py
+
+if [ -z "$3" ]; then
+    echo "usage: dcmrt_to_subvol <structural DICOM dir> <RTSTRUCT DICOM dir> <output_prefix> [options]"
+    exit -1
+fi
+
+t1w_dcm=$1; shift
+rts_dcm=$1; shift
+p=$1; shift
+
+echo dcmrtread $t1w_dcm $rts_dcm/`ls $rts_dcm | head -1 ` $p
+dcmrtread $t1w_dcm $rts_dcm/`ls $rts_dcm | head -1` $p
+
+if (( $? )); then 
+    echo "dcmrt_to_subvol ERROR: dcmrtread failed, exiting"
+    exit -1
+fi
+
+
+for m in `ls ${p}_*.nii`; do
+    echo $m
+    lbl=${m%.*}
+    echo python $sfm $p.nii $m ${lbl}_subimage.nii ${lbl}_submask.nii
+    python $sfm $p.nii $m ${lbl}_subimage.nii ${lbl}_submask.nii
+    if (( $? )); then 
+        echo "dcmrt_to_subvol ERROR: $sfm failed"
+        exit -1
+    fi    
+done
+
+
