@@ -12,8 +12,8 @@ t1w_dcm=$1; shift
 rts_dcm=$1; shift
 p=$1; shift
 
-echo dcmrtread $t1w_dcm $rts_dcm/`ls $rts_dcm | head -1 ` $p
-dcmrtread $t1w_dcm $rts_dcm/`ls $rts_dcm | head -1` $p
+echo $RT/dcmrtread $t1w_dcm $rts_dcm/`ls $rts_dcm | head -1 ` $p
+$RT/dcmrtread $t1w_dcm $rts_dcm/`ls $rts_dcm | head -1` $p
 
 if (( $? )); then 
     echo "dcmrt_to_subvol ERROR: dcmrtread failed, exiting"
