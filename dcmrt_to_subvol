@@ -4,7 +4,7 @@ RT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 sfm=$RT/subimage_from_mask.py
 
 if [ -z "$3" ]; then
-    echo "usage: dcmrt_to_subvol <structural DICOM dir> <RTSTRUCT DICOM dir> <output_prefix> [options]"
+    echo "usage: dcmrt_to_subvol <structural DICOM dir> <RTSTRUCT DICOM dir> <out_name_prefix> [options]"
     exit -1
 fi
 
