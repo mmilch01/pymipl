@@ -20,16 +20,19 @@ if (( $? )); then
     exit -1
 fi
 
+nreg=0;ntot=0
 
 for m in `ls ${p}_*.nii`; do
+    ((ntot++))
     echo $m
     lbl=${m%.*}
     echo python $sfm $p.nii $m ${lbl}_subimage.nii ${lbl}_submask.nii
     python $sfm $p.nii $m ${lbl}_subimage.nii ${lbl}_submask.nii
     if (( $? )); then 
-        echo "dcmrt_to_subvol ERROR: $sfm failed"
-        exit -1
-    fi    
+        echo "dcmrt_to_subvol WARNING: extracting subvolume for $lbl failed."
+        continue
+    fi
+    ((nreg++))
 done
 
-
+echo "successfully created subvolumes for $nreg out of $ntot structures"

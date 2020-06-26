@@ -7,11 +7,13 @@ def get_cube_type(max_size):
         {'range':[0,5],'cube_dim':15,'label':'small'},
         {'range':[5,10],'cube_dim':20,'label':'medium'},
         {'range':[10,20],'cube_dim':30,'label':'large'},
-        {'range':[20,60],'cube_dim':70,'label':'ex_large'}
+        {'range':[20,60],'cube_dim':70,'label':'ex_large'},
+        {'range':[60,120],'cube_dim':120,'label':'max_size'}
     ]
     for e in tum_size_map:
         rng=e['range']
         if max_size>=rng[0] and max_size<rng[1]: return e
+    print('ROI size {}mm exceeded maximum ROI size ({}mm)!'.format(max_size,tum_size_map[-1]['range'][1]))
     return None
     
 def resample_image_111(img_in,is_mask):
@@ -43,7 +45,7 @@ def split_image(file_im,files_masks):
         print('ERROR: cannot read input file(s)')
         print(sys.exc_info()[1])
         return None
-       
+        
 def get_subimages(img,mask):
     props=skimage.measure.regionprops(mask.get_fdata().astype('int'))
     bb=props[0].bbox
@@ -56,7 +58,9 @@ def get_subimages(img,mask):
     #print('bbox center:',bb_center)
     
     tp=get_cube_type(dims.max())
-    if tp is None: return None,None
+    if tp is None:
+        print('get_subimages: invalid input object size')
+        return None,None
     
     cube_dim=tp['cube_dim']
     #print('cube_dim',cube_dim)
@@ -84,7 +88,7 @@ def nifti_subimage_111(img,bounds,is_mask):
     for i in range(3):
         i0,i1=0,ish[i]
         s0,s1=bounds[i][0],bounds[i][1]
-        if s1<i0 or s0>i1: print('exiting'); return None #the sub-range is outside original image
+        if s1<i0 or s0>i1: print('Intersection of mask and image is empty!'); return None #the sub-range is outside the original image
         ist[i]=s0 if s0>=i0 else 0
         ien[i]=s1 if s1<=i1 else i1
         sst[i]=0 if s0>=i0 else i0-s0
@@ -110,9 +114,15 @@ if __name__=="__main__":
     a=p.parse_args()
     print('reading',a.image,a.mask)
     im,masks=split_image(a.image,[a.mask])
-    if im is None or masks is None: sys.exit (-1)
+    if im is None or masks is None: 
+        print('Unsupported input, exiting')
+        sys.exit (-1)
+        
     subim,submask=get_subimages(im,masks[0])
-    if subim is None or submask is None: sys.exit(-1)
+    if subim is None or submask is None: 
+        print('Unsupported combination of mask and image, exiting')
+        sys.exit(-1)
+        
     print('writing',a.out_image)
     subim.to_filename(a.out_image)
     print('writing',a.out_mask)
