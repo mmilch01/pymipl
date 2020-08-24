@@ -13,6 +13,21 @@ Python 3.5+ with the following packages:<br>
 
 argparse,numpy,skimage,nibabel
 
+## convert_subvol
+
+Input: subimage, reference image <br>
+Output: subimage in reference image space, (optionally) RTSS DICOM file with synthesized contour set.<br>
+usage: convert_subvol \<NIFTI subimage\> \<original NIFTI image\> [options] <br>
+
+options:<br>
+  -m              subimage is a binary ROI mask (required to convert to RTSS)<br>
+  -dcm \<dcm_dir\>  referenced structural DICOM series dir (-rtss required)<br>
+  -rtss \<file\>    output RT Structure Set file name (-dcm required)<br>
+  --min_poly_pts \<int\><br>
+                  minimum number of points in polygon<br>
+  --tolerance \<float\><br>
+                  polygon approximation tolerance (mm)<br>
+
 ## nifti2rtss.py
 
 Input: reference DICOM directory, NIFTI mask volume <br> 
