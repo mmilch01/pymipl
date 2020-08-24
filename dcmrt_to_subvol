@@ -1,3 +1,5 @@
+#Author: Mikhail Milchenko, mmilchenko@wustl.edu
+#Copyright (c) 2020, Computational Imaging Lab, School of Medicine, Washington University in Saint Louis
 
 #Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -10,7 +12,7 @@
 #!/bin/bash
 
 RT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-sfm=$RT/subimage_from_mask.py
+sfm=$RT/subimage_convert.py
 
 if [ -z "$3" ]; then
     echo "usage: dcmrt_to_subvol <structural DICOM dir> <RTSTRUCT DICOM dir> <out_name_prefix> [options]"
@@ -35,9 +37,11 @@ for m in `ls ${p}_*.nii`; do
     ((ntot++))
     echo $m
     lbl=${m%.*}
-    echo python $sfm $p.nii $m ${lbl}_subimage.nii ${lbl}_submask.nii
-    python $sfm $p.nii $m ${lbl}_subimage.nii ${lbl}_submask.nii
-    if (( $? )); then 
+    
+    echo python $sfm roi2subim --img $p.nii --roi $m
+    python $sfm roi2subim --img $p.nii --roi $m
+    
+    if (( $? )); then
         echo "dcmrt_to_subvol WARNING: extracting subvolume for $lbl failed."
         continue
     fi

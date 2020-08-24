@@ -1,0 +1,77 @@
+#Author: Mikhail Milchenko, mmilchenko@wustl.edu
+#Copyright (c) 2020, Computational Imaging Lab, School of Medicine, Washington University in Saint Louis
+
+#Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+#1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+#THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, #INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE #DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, #SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR #SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, #WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF #THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+#!/bin/bash
+
+RT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+sfm=$RT/subimage_convert.py
+rtm=$RT/nifti2rtss.py
+
+if [ -z "$3" ]; then
+    echo "usage: convert_subvol <NIFTI subimage> <original NIFTI image> [options]"
+    echo "options:"
+    echo "  -m              subimage is a binary ROI mask (required to convert to RTSS)"
+    echo "  -dcm <dcm_dir>  referenced structural DICOM series dir (-rtss required)"
+    echo "  -rtss <file>    output RT Structure Set file name (-dcm required)"
+    echo "  --min_poly_pts <int>"
+    echo "                  minimum number of points in polygon"
+    echo "  --tolerance <float>"
+    echo "                  polygon approximation tolerance (mm)"
+    exit -1
+fi
+
+subim=$1; shift
+img=$1; shift
+
+is_mask=0
+while [ -n "$1" ]; do
+    case $1 in
+        -dcm)   shift; dcm_ref=$1; shift ;;
+        -rtss)  shift; rtss=$1; shift ;;
+        -m)     is_mask=1; shift ;;
+        *)  rtm_opts="$rtm_opts $1"; shift ;;
+    esac
+done
+
+echo "dcm_ref: $dcm_ref, rtss: $rtss, is_mask: $is_mask"
+
+echo "transforming subimage to the original image"
+
+if (( is_mask )); then
+    echo python $sfm subim2roi --sub_roi $subim --img $img
+    python $sfm subim2roi --sub_roi $subim --img $img
+else
+    echo python $sfm subim2roi --sub_img $subim --img $img
+    python $sfm subim2roi --sub_img $subim --img $img
+fi
+if (( $? )); then
+    echo "convert_subvol ERROR: converting subimage to image failed"
+    exit -1
+fi
+out=${subim%.nii}_subim2roi.nii
+echo "successfully created $out"
+
+if [ -d "$dcm_ref" -a -n "$rtss" -a "$is_mask"=="1" ]; then
+    echo "converting the mask to RTSS"
+    echo python $rtm $out $dcm_ref $rtss $rtm_opts
+    python $rtm $out $dcm_ref $rtss $rtm_opts 
+else
+    exit 0
+fi
+
+if (( $? )); then
+    echo "convert_subvol ERROR: creating RTSS failed"
+    exit -1
+fi
+
+echo "successfully created $rtss" 
+
+

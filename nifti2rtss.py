@@ -1,9 +1,9 @@
 '''
 This script was derived from: https://github.com/wanderine/nnunetdocker/convert_to_RTSTRUCT.py v. 07.31.2020
-Author: Mikhail Milchenko
+Author: Mikhail Milchenko, mmilchenko@wustl.edu
 Copyright (c) 08.04.2020, Computational Imaging Lab, Washington University School of Medicine
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+Redistribution and use in source and binary forms, for any purpose, with or without modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
@@ -53,6 +53,8 @@ def create_rtss_dataset(dicoms_sorted,structure_label):
 
     SOP_class_UID='1.2.840.10008.5.1.4.1.1.481.3'
     SOP_inst_UID,ser_inst_UID=generate_uid(),generate_uid()
+    dt0=datetime.min
+    date0,time0=dt0.strftime("%Y%m%d"),dt0.strftime("%H%M%S")
     dt=datetime.now()
     date,time=dt.strftime("%Y%m%d"),dt.strftime("%H%M%S")
 
@@ -77,7 +79,9 @@ def create_rtss_dataset(dicoms_sorted,structure_label):
     r.InstanceNumber='1'
     r.SeriesNumber=None
 
-    r.StudyDate,r.StudyTime,=rf.StudyDate,rf.StudyTime
+    r.StudyDate=rf.StudyDate if 'StudyDate' in rf else date0
+    r.StudyTime=rf.StudyTime if 'StudyTime' in rf else time0
+    
     r.AccessionNumber=rf.AccessionNumber if 'AccessionNumber' in rf else None
     r.StudyDescription,r.StudyInstanceUID,r.StudyID=rf.StudyDescription,rf.StudyInstanceUID,rf.StudyID
 
