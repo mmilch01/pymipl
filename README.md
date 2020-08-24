@@ -20,13 +20,11 @@ Output: subimage in reference image space, (optionally) RTSS DICOM file with syn
 usage: convert_subvol \<NIFTI subimage\> \<original NIFTI image\> [options] <br>
 
 options:<br>
-  -m              subimage is a binary ROI mask (required to convert to RTSS)<br>
-  -dcm \<dcm_dir\>  referenced structural DICOM series dir (-rtss required)<br>
-  -rtss \<file\>    output RT Structure Set file name (-dcm required)<br>
-  --min_poly_pts \<int\><br>
-                  minimum number of points in polygon<br>
-  --tolerance \<float\><br>
-                  polygon approximation tolerance (mm)<br>
+    -m                      subimage is a binary ROI mask (required to convert to RTSS)<br>
+    -dcm \<dcm_dir\>        referenced structural DICOM series dir (-rtss required)<br>
+    -rtss \<file\>          output RT Structure Set file name (-dcm required)<br>
+    --min_poly_pts \<int\>  minimum number of points in polygon<br>
+    --tolerance \<float\>   polygon approximation tolerance (mm)<br>
 
 ## nifti2rtss.py
 
