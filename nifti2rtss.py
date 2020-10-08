@@ -38,9 +38,9 @@ def sort_dcms_by_slice_pos(input_dicom_path,dcm_files):
     dcmss=[]
     for idx,dcm in enumerate(dcm_files):
         ds = pydicom.dcmread(os.path.join(input_dicom_path,dcm), stop_before_pixels=True)
-        if idx==0:
-           if 'SliceLocation' in ds: sortTag='SliceLocation'
-           elif 'ImagePositionPatient' in ds: sortTag='ImagePositionPatient'
+        if idx==0:           
+           if 'ImagePositionPatient' in ds: sortTag='ImagePositionPatient'
+           elif 'SliceLocation' in ds: sortTag='SliceLocation'
            else: return None
         if not sortTag in ds: return None
         if sortTag=='ImagePositionPatient': z=ds.ImagePositionPatient[2]
@@ -199,7 +199,14 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
     #---------------
 
     # Load nifti volume
-    nii = nib.load(input_nifti_path)
+    
+    #nii = nib.load(input_nifti_path)
+    
+    nii0 = nib.load(input_nifti_path)
+    flips=np.sign(nii0.affine)
+    nii=nii0.as_reoriented([[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
+    print("axes flips:", [[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
+    
     volume = nii.get_fdata()
     volume = volume.astype(float)
 
