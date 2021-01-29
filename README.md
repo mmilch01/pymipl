@@ -1,6 +1,10 @@
 # pymipl
 
+A collection of tools for working with regions of interest (ROI's) in DICOM RT and NIFTI formats. Includes extraction of subvolumes and format interconversion utilities.
+
 ## dcmrt_to_subvol
+
+Convert a DICOM RT structure set to a set of NIFTI images, each containing individual structure set.
 
 Input: DICOM dirs of a structural MRI and RTSTRUCT <br> 
 Output: individual subvolumes of all structures (except for Skull) in NIFTI format<br>
@@ -15,6 +19,8 @@ argparse,numpy,skimage,nibabel
 
 ## convert_subvol
 
+Convert a NIFTI ROI subimage to a reference image space, optionally convert to DICOM RTSTRUCT
+
 Input: subimage, reference image <br>
 Output: subimage in reference image space, (optionally) RTSS DICOM file with synthesized contour set.<br>
 usage: convert_subvol \<NIFTI subimage\> \<original NIFTI image\> [options] <br>
@@ -27,6 +33,8 @@ options:<br>
     --tolerance \<float\>   polygon approximation tolerance (mm)<br>
 
 ## nifti2rtss.py
+
+Create RTSTRUCT from a NIFTI binary volume and structural MRI. 
 
 Input: reference DICOM directory, NIFTI mask volume <br> 
 Output: RTSTRUCT with conturs created from this NIFTI mask referencing the reference DICOM series.
@@ -41,4 +49,3 @@ Requrements: <br>
 Python 3.5+ with the following packages:<br>
 
 nibabel, pydicom
-
