@@ -1,7 +1,8 @@
 '''
 This script was derived from: https://github.com/wanderine/nnunetdocker/convert_to_RTSTRUCT.py v. 07.31.2020
+
 Author: Mikhail Milchenko, mmilchenko@wustl.edu
-Copyright (c) 08.04.2020, Computational Imaging Lab, Washington University School of Medicine
+Copyright (c) 2021, Computational Imaging Lab, Washington University School of Medicine
 
 Redistribution and use in source and binary forms, for any purpose, with or without modification, are permitted provided that the following conditions are met:
 
