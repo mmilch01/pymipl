@@ -21,6 +21,8 @@ from pydicom.sequence import Sequence
 from nibabel.nifti1 import Nifti1Image,Nifti1Header
 import nibabel.nifti1
 
+from utils import write_rec_file
+
 def sort_dcms_by_slice_pos(input_dicom_path,dcm_files,stop_before_pixels=True):
     '''
     Sort DICOMs from an input directory (assumed to contain a single study) according to slice position
@@ -251,7 +253,7 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
     nifti_image_struct=Nifti1Image(struct_voxels,nifti_affine)    
         
     if not write_one_roi_per_file:
-        nifti_image_roi=Nifti1Image(rtss_voxels[0],nifti_affine)        
+        nifti_image_roi=Nifti1Image(rtss_voxels[0],nifti_affine)
         print ('writing',output_rtss_nii)
         nibabel.nifti1.save(nifti_image_roi,output_rtss_nii)
     else:
@@ -289,7 +291,6 @@ def get_parser():
     
 if __name__ == "__main__":
     p = get_parser()
-    print(p)
     structural=p.out_roi_mask+'_struct.nii' if p.out_struct is None else p.out_struct
     
     exc_labels=[] if p.exclude_labels is None else p.exclude_labels.split(',')
@@ -300,4 +301,8 @@ if __name__ == "__main__":
     rtss_to_nifti(p.in_rtss, p.in_struct_dir,p.out_roi_mask,
                   structural,exc_labels,p.separate_masks)
     
+    write_rec_file(p.out_roi_mask,'nii',[p.in_rtss,p.in_struct_dir])
+    write_rec_file(structural,'nii',[p.in_rtss,p.in_struct_dir])
     
+    print('done')
+            
