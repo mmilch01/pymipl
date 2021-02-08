@@ -56,6 +56,7 @@ def extract_mesh_from_vtkImage(vtkImage, isovalue:float):
     vtkCF=vtk.vtkContourFilter()
     vtkCF.SetInputData(vtkImage)
     vtkCF.SetValue(0,isovalue)
+
     vtkCF.Update()
     return vtkCF.GetOutput()
 
@@ -80,31 +81,34 @@ def vtk_write_stl(vtkPolys, filename:str):
     stlWriter.Write()
     
 def get_parser():
+    
     """
     Parse input arguments.
     """
     parser = argparse.ArgumentParser(description='Convert NIFTI binary mask to a mesh file.')
 
     # Positional arguments.
-    parser.add_argument("in_nii", help="Input NIFTI file")
-    parser.add_argument("out_file", help="Output mesh file. Supported formats listed here: https://pypi.org/project/meshio")
-    parser.add_argument("--mask_value", metavar="<int>",type=int,default=1,
-                        help="input mask isovalue to create surface [1]")
+    parser.add_argument("in_nii_file", help="Input NIFTI file")
+    parser.add_argument("out_mesh_file", help="Output mesh file. Supported formats listed here: https://pypi.org/project/meshio")
+    parser.add_argument("--min_mask_value", metavar="<int>",type=int,default=1,
+                        help="minimum isovalue to create surface [1]")
+
+    parser.add_argument("--no_mesh_smoothing", action='store_true', default=False, help="do not smoothen the output mesh [False]")
+    
     return parser.parse_args()
     
 if __name__ == "__main__":
     p = get_parser()
     
-    print ('reading',in_nii)
-    vtkImage=read_NIFTI_into_vtkImage(input_nii)
-    vtkPolys=extract_mesh_from_vtkImage(vtkImage,1)
-    vtkPolysSmoothed=smoothen_mesh_vtkPolys(vtkPolys)
+    print ('reading',p.in_nii_file)
+    vtkImage=read_NIFTI_into_vtkImage(p.in_nii_file)
+    vtkPolys=extract_mesh_from_vtkImage(vtkImage,p.min_mask_value)
+    vtkPolysSmoothed=vtkPolys if p.no_mesh_smoothing else smoothen_mesh_vtkPolys(vtkPolys)                  
     points, nodes=get_triangular_mesh_from_vtkPolyData(vtkPolysSmoothed)
     cells=[("triangle",nodes)]
-    mesh=meshio.mesh(points,cells)
-    print('writing',p.out_file)
-    meshio.write(p.out_file,mesh)   
-    write_rec_file(p.out_file,infiles=[p.in_rtss,p.in_struct_dir])    
+    mesh=meshio.Mesh(points,cells)
+    print('writing',p.out_mesh_file)
+    meshio.write(p.out_mesh_file,mesh)   
+    write_rec_file(p.out_mesh_file,infiles=[p.in_nii_file])
     print('done')
-                
     
