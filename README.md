@@ -38,7 +38,10 @@ rtss2nifti.py [-h] [--out_struct <string>] [--exclude_labels <string>] [--separa
 
 ## nifti2mesh.py
 Convert a NIFTI binary mask to a mesh file.
-usage: python nifti2mesh.py [--min_mask_value <int>] [--no_mesh_smoothing] in_nifti_file out_mesh_file
+usage: python nifti2mesh.py [--min_mask_value <int>] [--no_mesh_smoothing] in_nifti_file out_mesh_file<br><br>
 
-input: 3D binary mask
-output: 3D mesh file. Output formats are those supported by <a href="https://pypi.org/project/meshio">meshio</a>
+input: 3D binary mask<br>
+output: 3D mesh file. Output formats are those supported by <a href="https://pypi.org/project/meshio">meshio</a><br>
+<br>
+Note: requires <a href="https://itkpythonpackage.readthedocs.io">ITK</a>
+
