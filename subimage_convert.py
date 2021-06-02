@@ -14,6 +14,7 @@ import json,os,os.path,sys,argparse
 import numpy as np,skimage,nibabel as nib, nibabel.processing, nibabel.funcs
 from skimage import measure, filters, morphology
 from skimage.transform import rescale, resize
+from utils import write_rec_file
 
 def get_cube_type(max_size):
     tum_size_map=[
@@ -204,6 +205,8 @@ if __name__=="__main__":
         print('writing',out_sub_img+'.nii'); subim.to_filename(out_sub_img+'.nii')
         jout=out_sub_img+'.json'; print('writing',jout)
         with open(jout,'w') as f: json.dump(header_dict,f)
+        write_rec_file(out_sub_img,'nii',[a.img,a.roi])
+        write_rec_file(out_sub_roi,'nii',[a.img,a.roi])
             
     elif a.command=='subim2roi':
         img,img_roi,sub_img=None,None,None
@@ -235,6 +238,9 @@ if __name__=="__main__":
             res=subimage2image(sub_roi,img,jin,True)
             fout=a.sub_roi.replace('.nii','')+suff; print('writing',fout)
             res.to_filename(fout)
+            
+        write_rec_file(fout,'nii',[a.img,a.sub_img,a.sub_roi])
+        
     else:
         print('command not understood'); exit (-1)
                 
