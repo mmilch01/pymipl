@@ -52,7 +52,7 @@ def voxel_array_from_sorted_dicoms(dicomsSorted):
         
     return voxels
 
-def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dicom:str, series_description:str,\
+def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeriesDescription:str,\
                          newSeriesInstanceUID:str,newSeriesNumber:int,flipX:bool,flipY:bool,flipZ:bool):
     '''
     Main routine to read NIFTI and DICOM images, replace voxels and specified meta tags in DICOM dataset, 
