@@ -21,6 +21,7 @@ import pydicom
 from pydicom.dataset import Dataset
 from pydicom.sequence import Sequence
 from pydicom.uid import generate_uid
+from utils import write_rec_file
 
 def concatenate_coordinates(coordinates_x, coordinates_y, coordinates_z):
 
@@ -383,3 +384,4 @@ if __name__ == "__main__":
     p = get_parser()
     print(p)
     convert(p.input_nifti, p.input_dicom, p.output_dicom, p.structure_label,p.tolerance,p.min_poly_pts)
+    write_rec_file(p.output_dicom,infiles=[p.input_dicom,p.input_nifti])
