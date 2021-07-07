@@ -38,7 +38,7 @@ def write_rec_file(root:str,main_extension=None,infiles=[]):
     inlogs={}
     for file in infiles:
         get_inlog(file,inlogs)
-    outlog=cmdprov.new_log(infile_logs=inlogs,extra_notes=["user: "+getpass.getuser(),str(os.uname())])
+    outlog=cmdprov.new_log(infile_logs=inlogs,extra_notes=["user: "+getpass.getuser(),"node: "+os.uname()[1]])
     outlog_file=get_rec_file_root(root,main_extension)
     print('writing',outlog_file)
     cmdprov.write_log(outlog_file,outlog)
