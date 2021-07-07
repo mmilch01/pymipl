@@ -82,8 +82,8 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
 
     #initialize optional metadata
     siUID=pydicom.uid.generate_uid() if newSeriesInstanceUID is None else newSeriesInstanceUID
-    sDescr=ds.SeriesDescription if newSeriesDescription is None else newSeriesDescription
-    sNumber=ds.SeriesNumber if newSeriesNumber is None else newSeriesNumber        
+    sDescr=ds0.SeriesDescription if newSeriesDescription is None else newSeriesDescription
+    sNumber=ds0.SeriesNumber if newSeriesNumber is None else newSeriesNumber        
 
     #make output dcm dir
     try:
