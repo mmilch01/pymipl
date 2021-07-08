@@ -59,9 +59,16 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
     and write back synthetic DICOM.
     '''
     #load NIFTI image
-    nii=nib.load(input_nifti)
+    nii0=nib.load(input_nifti)
+    flips=np.sign(nii.affine)
+    nii=nii0.as_reoriented([[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
+    print("axes flips:", [[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
+    
     dcm_in_files=next(os.walk(input_dcm))[2]
     numberOfDicomImages = len(dcm_in_files)
+    
+    
+    
     
     #get a list of DICOM datasets, one dataset per slice
     dcm_in_sorted=sort_dcms_by_slice_pos(input_dcm,dcm_in_files,stop_before_pixels=False)
@@ -129,4 +136,4 @@ if __name__ == "__main__":
     
     convert_nifti_to_dcm(p.input_dicom,p.input_nifti,p.output_dicom,p.series_description, \
                         p.series_uid,p.series_number,p.flip_x,p.flip_y,p.flip_z)
-    write_rec_file(p.output_dicom,infiles=[p.input_dicom,p.input_nifti])
+    write_rec_file(p.output_dicom, infiles=[p.input_dicom,p.input_nifti])
