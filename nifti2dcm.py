@@ -10,7 +10,7 @@ Redistribution and use in source and binary forms, for any purpose, with or with
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
 
-import os, pydicom, argparse
+import sys, os, pydicom, argparse
 import nibabel as nib
 import numpy as np
 import ipywidgets as ipw
@@ -60,14 +60,26 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
     '''
     #load NIFTI image
     nii0=nib.load(input_nifti)
-    flips=np.sign(nii.affine)
-    nii=nii0.as_reoriented([[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
+    
+    #this line works around apparent bug in nib's Nifti1Header.set_dim_info function
+    nii0.header.set_dim_info(None,None,None)
+    
+    flips=np.sign(nii0.affine)
+#    print(nii0.affine)
+#    print(flips, flips.shape)
+#    print(nii0)
+
+    print([[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
+    try:
+        nii=nii0.as_reoriented([[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
+    except Exception as e:
+        print(e)
+        return -1
+    
     print("axes flips:", [[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
     
     dcm_in_files=next(os.walk(input_dcm))[2]
-    numberOfDicomImages = len(dcm_in_files)
-    
-    
+    numberOfDicomImages = len(dcm_in_files)     
     
     
     #get a list of DICOM datasets, one dataset per slice
@@ -80,7 +92,10 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
     dcm_in_voxels=voxel_array_from_sorted_dicoms(dcm_in_sorted)
     nii_in_voxels=nii.get_fdata().astype(ds0.pixel_array.dtype)
     if dcm_in_voxels.shape != nii_in_voxels.shape:
-        print ('NIFTI and DICOM image shapes don\'t match!')    
+        print ('NIFTI and DICOM image shapes don\'t match!')
+        print ('NIFTI shape:',nii_in_voxels.shape)
+        print ('DICOM shape:',dcm_in_voxels.shape)
+        return -1
     
     #pre-flip NIFTI voxels
     if flipX: nii_in_voxels=np.flip(nii_in_voxels,0)
@@ -105,8 +120,7 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
         ds[0x0020, 0x000e].value=siUID
         ds[0x0008,0x103e].value=sDescr
         ds[0x0020, 0x0011].value=sNumber
-        ds.save_as(output_dcm+'/'+str(i)+'.dcm')    
-
+        ds.save_as(output_dcm+'/'+str(i)+'.dcm')           
 
 def get_parser():
     """
@@ -133,7 +147,8 @@ if __name__ == "__main__":
     
     p = get_parser()
     print(p)
-    
-    convert_nifti_to_dcm(p.input_dicom,p.input_nifti,p.output_dicom,p.series_description, \
-                        p.series_uid,p.series_number,p.flip_x,p.flip_y,p.flip_z)
     write_rec_file(p.output_dicom, infiles=[p.input_dicom,p.input_nifti])
+    
+    sys.exit (convert_nifti_to_dcm(p.input_dicom,p.input_nifti,p.output_dicom,p.series_description, \
+                        p.series_uid,p.series_number,p.flip_x,p.flip_y,p.flip_z))
+    
