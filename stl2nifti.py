@@ -13,17 +13,21 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 import argparse,stltovoxel,numpy as np
 from nibabel.nifti1 import Nifti1Image,Nifti1Header
 import nibabel.nifti1
+from utils import write_rec_file
 from stl import mesh
 
 def stl2nifti(infile:str,outfile:str, resolution:int, padding_fraction:float):
     #read stl mesh from file
-    mesh_obj=mesh.Mesh.from_file(infile)
+    print("Creating mesh")
+    mesh_obj=mesh.Mesh.from_file(infile)    
     
     #make 'organized mesh', format to input to stltovoxel.
     org_mesh = np.hstack((mesh_obj.v0[:, np.newaxis], mesh_obj.v1[:, np.newaxis], mesh_obj.v2[:, np.newaxis]))
     meshdim=(np.amax(org_mesh,0)-np.amin(org_mesh,0))[0]  
 
+    print('meshdim',meshdim)
     #convert mesh to raster
+    print("Converting mesh to raster")
     vol,_,_=stltovoxel.convert_mesh(org_mesh,resolution=resolution)
 
     #create output nifti file
@@ -35,8 +39,9 @@ def stl2nifti(infile:str,outfile:str, resolution:int, padding_fraction:float):
     vol1=np.pad(vol, [(pad[0],pad[0]),(pad[1],pad[1]),(pad[2],pad[2])] )
     
     #write out
+    print("Writing",outfile)
     nifti_image=Nifti1Image(vol1,nifti_affine)
-    nibabel.nifti1.save(nifti_image,out)    
+    nibabel.nifti1.save(nifti_image,outfile)
 
 def get_parser():
     """
@@ -56,6 +61,5 @@ def get_parser():
 
 if __name__ == "__main__":
     p = get_parser()
-    p.in_stl
-    stl2nifti(p.in_stl,p.out_stl,p.resolution,p.padding_fraction)
-    write_rec_file(p.out_stl,main_extension='nii',infiles=[p.in_stl])
+    stl2nifti(p.in_stl,p.out_nii,p.resolution,p.padding_fraction)
+    write_rec_file(p.out_nii,main_extension='nii',infiles=[p.in_stl])

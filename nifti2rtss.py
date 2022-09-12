@@ -243,7 +243,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
             #DEBUG: if inited==2: continue
             #print("n is ",n,"for slice ",slice)
             nc=len(contour[:,0])
-            cont1=measure.approximate_polygon(contour,2)
+            cont1=measure.approximate_polygon(contour,poly_approx_tol)
             nCoordinates = len(cont1[:,0])
             #if nc>1000: print('Large contour before approximation: ',nc,'pts, after:',nCoordinates)
             if nCoordinates<min_poly_pts: continue
@@ -374,9 +374,9 @@ def get_parser():
     parser.add_argument("input_nifti", help="Path to input NIFTI image")
     parser.add_argument("input_dicom", help="Path to input DICOM images")
     parser.add_argument("output_dicom", help="Path to output DICOM image")
-    parser.add_argument("--structure_label",metavar="<string>",type=str,default="ROI1",help='structure set label')
-    parser.add_argument("--tolerance",metavar="<float>", type=float, default=1,help="polygon approximation tolerance (mm)")
-    parser.add_argument("--min_poly_pts", metavar="<int>",type=int,default=3,help="minimum number of points in polygon")
+    parser.add_argument("--structure_label",metavar="<string>",type=str,default="ROI1",help='structure set label [ROI1]')
+    parser.add_argument("--tolerance",metavar="<float>", type=float, default=1,help="polygon approximation tolerance (mm) [1]")
+    parser.add_argument("--min_poly_pts", metavar="<int>",type=int,default=3,help="minimum number of points in polygon [3]")
 
     return parser.parse_args()
 
