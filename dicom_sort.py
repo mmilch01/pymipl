@@ -71,17 +71,22 @@ def process_subdir(d:dict,root:Path):
             #file_dict['parent']=d
             file_dict['level']=d['level']+1
             d['children']+=[file_dict]
+
+def analyze_dir(dir, save_to_file=None):
+    root=Path(dir).absolute()
+    d={'path':root.as_posix(),'parent':None, 'level': 0}
+    process_subdir(d,root)
+    if save_to_file:
+        with open(save_to_file,'w') as txt:
+            json.dump(d,txt,indent=2)
+    return d
+
 '''
 parses a directory with project data containing structural DICOM's, DICOMRTs and DICOMSeg's. 
 '''
 if __name__ == "__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("root_dir",type=str,help="Directory to search")
-
     args=parser.parse_args()
-    root=Path(args.root_dir).absolute()
-    d={'path':root.as_posix(),'parent':None, 'level': 0}
-    process_subdir(d,root)
-    with open('tree.json','w') as txt:
-        json.dump(d,txt,indent=2)
+    d=analyze_dir(args.root_dir,'tree.json')
     
