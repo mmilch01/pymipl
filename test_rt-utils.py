@@ -10,6 +10,8 @@ def buildMaskArray(seriesPath, labelPath):
     """
     Helper for the following function: taken from rt_utils
     """
+    if labelPath is None: return [], []
+        
     rtstruct = RTStructBuilder.create_from(
         dicom_series_path=seriesPath, rt_struct_path=labelPath)
     
@@ -57,11 +59,13 @@ def buildMasks(structPath, rtPath, outroot):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="RT Struct converter")
 
-    parser.add_argument("dicom_series_path", type=str, help="Path to the DICOM series directory")
-    parser.add_argument("rt_struct_path", type=str, help="Path to the RT Struct DICOM file")
-    parser.add_argument("out_label", type=str, help="Label prefix for output files")
+    parser.add_argument("dicom_series_path", type=str, help="Path to the DICOM series directory")    
+    parser.add_argument("out_label", type=str, help="path prefix for output files")
+    parser.add_argument("--rt_struct_path", type=str, help="Path to the RT Struct DICOM file", default=None)
     args = parser.parse_args()
-    buildMasks(args.dicom_series_path,args.rt_struct_path,'./'+args.out_label)
+
+    print(f"building NIFTI for {args.dicom_series_path}, output to {args.out_label}, structural path {args.rt_struct_path}")
+    buildMasks(args.dicom_series_path,args.rt_struct_path,args.out_label)
 
     #dicom_series_path = "/data/ADAPT/RIDER-1129164940/09-20-2006-1-NA-96508/scans/4-unknown/resources/DICOM"
     #rt_struct_path="/data/ADAPT/RIDER-1129164940/09-20-2006-1-NA-96508/scans/9-TEST/resources/secondary/1-1.dcm"

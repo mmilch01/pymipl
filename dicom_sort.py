@@ -57,10 +57,12 @@ def process_subdir(d:dict,root:Path):
         if entry.is_dir():
             entry_dict={}
             entry_dict['path']=entry.relative_to(root).as_posix()
-            print(entry.as_posix())
+            #print(entry.as_posix())
             d['children']+=[entry_dict]
             #entry_dict['parent']=d
-            entry_dict['level']=d['level']+1
+            level=d['level']+1
+            entry_dict['level']=level
+            if level==1: print(entry.as_posix())
             process_subdir(entry_dict,root)
             
         elif entry.is_file():
