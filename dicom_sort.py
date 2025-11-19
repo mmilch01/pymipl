@@ -83,6 +83,67 @@ def analyze_dir(dir, save_to_file=None):
             json.dump(d,txt,indent=2)
     return d
 
+
+def get_subject(file_entry):
+    '''
+        Subject field location may be project-specific. For now, return 'PatName' field (equals subject for RIDER project).
+    '''
+    return file_entry['PatName']
+    
+
+def reindex_to_structurals_and_segs(d, save_to_file=None):
+    '''
+    reindex analyzed dir to structurals and corresponding segmentations.
+    '''
+    #first pass: build array of subjects, to each subject add array of structurals.
+    #list of subjects. each subject is dict with serinstUIDs as key.
+    subjects={}
+    struct_scans={}
+    
+    #pass 1, populate subjects and struct_scans    
+    for exp in d['children']:
+        for subd1 in exp['children']:
+            if Path(subd1['path']).stem == 'SCANS': 
+                for scan in subd1['children']:
+                    try:
+                        file_entry=scan['children'][0]['children'][0]
+                        sopclass = file_entry['SOPClass']
+                        uid=None
+                        
+                        if sopclass in ['CTImageStorage','MRImageStorage']:
+                            uid=file_entry['SeriesInstanceUID']
+                            if uid not in struct_scans:
+                                struct_scans[uid]={'structural':None, 'segmentations': []}
+                            else:
+                                struct_scans[uid]['structural']=file_entry                                
+                                
+                        elif sopclass in ['RTStruct','Seg']:
+                            uid=file_entry['ReferencedSeriesInstanceUID']
+                            if uid not in struct_scans:
+                                struct_scans[uid]={'structural':None,'segmentations':[]}
+                            struct_scans[uid]['segmentations']+=[file_entry]
+                            
+                        if uid is not None:
+                            subject=get_subject(file_entry)                      
+                            if subject not in subjects:
+                                subjects[subject]={'id':subject,'struct_uids':{}}
+                            if uid not in subjects[subject]['struct_uids']:
+                                subjects[subject]['struct_uids'][uid]={}
+                    except Exception as e:
+                        print (f'WARNING: skipping scan {file_entry}: {e}')
+                        continue
+                        
+    #pass 2, link subjects and structural scans.
+    for uid, entry in struct_scans.items():
+        for subject,subj_info in subjects.items():
+            subj_uid_dict=subj_info['struct_uids']
+            if uid in subj_uid_dict:
+                subj_uid_dict[uid]=struct_scans[uid]
+                
+    if save_to_file:
+        with open(save_to_file,'w') as txt:
+            json.dump(subjects,txt,indent=2)
+    return subjects
 '''
 parses a directory with project data containing structural DICOM's, DICOMRTs and DICOMSeg's. 
 '''

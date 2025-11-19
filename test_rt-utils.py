@@ -62,6 +62,7 @@ if __name__ == "__main__":
     parser.add_argument("dicom_series_path", type=str, help="Path to the DICOM series directory")    
     parser.add_argument("out_label", type=str, help="path prefix for output files")
     parser.add_argument("--rt_struct_path", type=str, help="Path to the RT Struct DICOM file", default=None)
+                        
     args = parser.parse_args()
 
     print(f"building NIFTI for {args.dicom_series_path}, output to {args.out_label}, structural path {args.rt_struct_path}")
