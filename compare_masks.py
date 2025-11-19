@@ -67,21 +67,22 @@ def main():
     p.add_argument("--mask1", required=True, type=str, help="Path to first binary mask")
     p.add_argument("--mask2", required=True, type=str, help="Path to second binary mask")
     p.add_argument("--out", required=True, type=str, help="Output JSON file")
-
+    
     args = p.parse_args()
 
+    print (f"Comparing masks {args.mask1} and {args.mask2}")
     m1 = load_mask(args.mask1)
     m2 = load_mask(args.mask2)
 
     dice = dice_coefficient(m1, m2)
-    asd = average_surface_distance(m1, m2)
+    asd = -1 #average_surface_distance(m1, m2)
 
     result = {
         "mask1": str(Path(args.mask1).resolve()),
         "mask2": str(Path(args.mask2).resolve()),
-        "dice": float(dice),
-        "average_surface_distance": float(asd),
+        "dice": float(dice),        
     }
+    #"average_surface_distance": float(asd),
 
     with open(args.out, "w") as f:
         json.dump(result, f, indent=2)
