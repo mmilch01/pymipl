@@ -11,9 +11,10 @@ import requests
 from pyxnat import Interface
 
 
-def upload_resource(xnat_project, subject, experiment, scan, source_loc, resource_name, level="scan", username=None, password=None, create_hierarchy=False):
-    XNAT_HOST = os.environ.get("XNAT_HOST")
-
+def upload_resource(xnat_project, subject, experiment, scan, source_loc, resource_name, level="scan", XNAT_HOST=None, username=None, password=None, create_hierarchy=False):
+    
+    if XNAT_HOST is None:
+        XNAT_HOST = os.environ.get("XNAT_HOST")
     if username is None or password is None:
         username = os.environ.get("XNAT_USER")
         password = os.environ.get("XNAT_PASS")
@@ -90,19 +91,27 @@ def upload_resource(xnat_project, subject, experiment, scan, source_loc, resourc
     if level == "subject":
         base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/subjects/{subj}/resources/{resource_name}/files"
     if level == "experiment":
-        base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/subjects/{subj}/experiments/{expt}/resources/{resource_name}/files"
+        base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/resources/{resource_name}/files"
     if level == "scan":
-        base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/subjects/{subj}/experiments/{expt}/scans/{scan_id}/resources/{resource_name}/files"
+        base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/scans/{scan_id}/resources/{resource_name}/files"
 
     try:
         with requests.Session() as s:
             s.auth = (username, password)
             for item in upload_items:
                 with item.open("rb") as f:
-                    r = s.put(f"{base_url}/{item.name}", params=params, data=f, headers={"Content-Type": "application/octet-stream"})
-                    print("Resource upload OK:", r.status_code, r.text[:500], "...")
+                    is_zip_upload = (tmp_zip is not None and item == tmp_zip)
+                    if is_zip_upload:
+                        params["extract"]="true"
+                        headers={"Content-Type": "application/zip"}
+                    else:
+                        headers={"Content-Type": "application/octet-stream"}
+                    
+                    r = s.put(f"{base_url}/{item.name}", params=params, data=f, headers=headers)
+                    #print("Resource upload OK:", r.status_code, r.text[:500], "...")
+                    logging.info(f"Resource upload OK: {r.status_code} {base_url} {r.text[:500]}")
                     if r.status_code >= 400:
-                        logging.error(f"Upload failed: {r.status_code} {r.text[:1000]}")
+                        logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]} ")
                         return 2
     finally:
         if tmp_zip and tmp_zip.exists():
@@ -128,6 +137,7 @@ def main():
     ap.add_argument("--scan")
     ap.add_argument("--source_loc", required=True)
     ap.add_argument("--resource_name", required=True)
+    ap.add_argument("--xnat_host")
     ap.add_argument("--user")
     ap.add_argument("--password")
     ap.add_argument("--create_hierarchy", type=int, choices=[0, 1], default=0)
@@ -146,7 +156,7 @@ def main():
     else:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
 
-    return upload_resource(args.xnat_project, args.subject, args.experiment, args.scan, args.source_loc, args.resource_name, args.level, args.user, args.password, bool(args.create_hierarchy))
+    return upload_resource(args.xnat_project, args.subject, args.experiment, args.scan, args.source_loc, args.resource_name, args.level, args.xnat_host, args.user, args.password, bool(args.create_hierarchy))
 
 
 if __name__ == "__main__":
