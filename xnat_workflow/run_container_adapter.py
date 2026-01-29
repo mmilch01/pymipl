@@ -8,9 +8,9 @@
 # --job_yaml:           job yaml file for the workflow_to_batch function
 # --output_batch_file:   output batch file for the workflow_to_batch function
 # --error_message: ['ERROR running worflow_to_batch on {}']
-# --input_mount_path []: maps to 'g_input_mount_path' in global_vars
-# --local_workdir_path []: maps to 'g_local_workdir_path'
-# --pymipl_dir []: maps to 'g_pymipl_dir'
+# --input_mount_path [/input]: maps to 'g_input_mount_path' in global_vars
+# --local_workdir_path [/workdir]: maps to 'g_local_workdir_path'
+# --pymipl_dir [/opt/packages/pymipl]: maps to 'g_pymipl_dir'
 # --project: maps to 'g_project', XNAT project
 # --main_repo_dir: maps to 'g_main_repo_dir', points to the repo dir of the script(s) executed at the run step of the job.
 
