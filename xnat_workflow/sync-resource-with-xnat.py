@@ -164,7 +164,7 @@ def main():
     if args.logfile: logging.basicConfig(filename=args.logfile + ".log", encoding="utf-8", filemode="a", format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
     else: logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
 
-    return sync_resource(args.project, args.subject, args.experiment, args.scan, args.local_resource, args.resource_name, bool(args.upload), args.level, args.xnat_host, args.user, args.password, bool(args.create_hierarchy))
+    return sync_resource(args.project, args.subject, args.experiment, args.scan, args.local_resource, args.remote_resource, bool(args.upload), args.level, args.xnat_host, args.user, args.password, bool(args.create_hierarchy))
 
 if __name__ == "__main__":
     sys.exit(main())

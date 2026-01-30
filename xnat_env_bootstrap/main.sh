@@ -27,8 +27,8 @@ usage() {
   echo "  -microenv <proj_resource>   XNAT project resource that contains micromamba env tarball (e.g. ENVS)"
   echo ""
   echo "repo source (exactly one required):"
-  echo "  -repo_git <url@sha>         public git repo URL with commit SHA (required); cloned to /opt/packages/main_repo"
-  echo "  -repo_env_dir <path>        path inside extracted env that contains repo; symlinked to /opt/packages/main_repo"
+  echo "  -repo_git <url@sha>         public git repo URL with commit SHA (required); cloned to /opt/packages/user/alg_repo"
+  echo "  -repo_env_dir <path>        path inside extracted env that contains repo; symlinked to /opt/packages/user/alg_repo"
   echo ""
   echo "optional:"
   echo "  -host        <XNAT_HOST>        [default: \$XNAT_HOST]"
@@ -59,17 +59,17 @@ PYMIPL_DIR="/opt/packages/pymipl"
 # ---- parse options ----
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -host) XNAT_HOST="${2:-}"; shift 2;;
-    -user) XNAT_USER="${2:-}"; shift 2;;
-    -pass) XNAT_PASS="${2:-}"; shift 2;;
-    -microenv) MICROENV_RESOURCE="${2:-}"; shift 2;;
-    -job) JOB="${2:-}"; shift 2;;
-    -input_mount) INPUT_MOUNT="${2:-}"; shift 2;;
-    -repo_git) REPO_GIT="${2:-}"; shift 2;;
-    -repo_env_dir) REPO_ENV_DIR="${2:-}"; shift 2;;    
-    -pymipl_dir) PYMIPL_DIR="${2:-}"; shift 2;;
-    -h|--help) usage; exit 0;;
-    *) exit_with_error "Unknown option: $1";;
+    -host) XNAT_HOST="${2:-}"; shift 2 ;;
+    -user) XNAT_USER="${2:-}"; shift 2 ;;
+    -pass) XNAT_PASS="${2:-}"; shift 2 ;;
+    -microenv) MICROENV_RESOURCE="${2:-}"; shift 2 ;;
+    -job) JOB="${2:-}"; shift 2 ;;
+    -input_mount) INPUT_MOUNT="${2:-}"; shift 2 ;;
+    -repo_git) REPO_GIT="${2:-}"; shift 2 ;;
+    -repo_env_dir) REPO_ENV_DIR="${2:-}"; shift 2 ;;
+    -pymipl_dir) PYMIPL_DIR="${2:-}"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) exit_with_error "Unknown option: $1" ;;
   esac
 done
 # ---- validate required ----
@@ -88,7 +88,8 @@ python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
     --level project \
     --project "$PROJECT" \
     --remote_resource "$MICROENV_RESOURCE" \
-    --local_resource "$env_loc"
+    --local_resource "$env_loc" \
+    --upload 0
 
 mkdir -p /opt/packages/user
 
