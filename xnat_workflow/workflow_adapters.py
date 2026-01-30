@@ -13,9 +13,13 @@ def paths_to_str(x):
     if isinstance(x, list): return [paths_to_str(v) for v in x]
     return x
 
-def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=None):
+def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=None, step_command_prefix=None):
     '''
     cmd must be single command with no |, >, &&, ;, variables, command substitutions, etc.
+    Use step_command_prefix only for calls that need to execute in a custom environment (e.g. duneai);
+    otherwise, environment with pymipl is assumed to be active at the time of batch execution.
+    So, if your step runs a pymipl script, no step_command_prefix should be specified.
+    For example, step_command_prefix can be 'micromamba -p /opt/packages/user/env_repo' for runs inside containers.
     '''
         
     d = yaml.safe_load(job_yaml) if isinstance(job_yaml, str) else dict(job_yaml)
@@ -44,7 +48,11 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
             if "step_command" in s: 
                 cmd = str(s["step_command"]).format(**s_job)
                 if error_message is None: error_message=f'command failed: {cmd}'
-                f.write(f'cmd=({cmd})\n')
+                #insert command prefix if not pymipl command.
+                if step_command_prefix is not None and cmd.find('{g_pymipl_dir}') == -1:
+                    f.write(f'cmd=({step_command_prefix} {cmd})\n')
+                else 
+                    f.write(f'cmd=({cmd})\n')
                 f.write(f'if ! "${{cmd[@]}}"; then\n    echo "{error_message}"\n    exit 1\nfi\n')
             args = [
                 f'--xnat_project "{s_job["g_project"]}"',
@@ -61,6 +69,7 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
                     p = (str(p) if isinstance(p, Path) else str(p)).format(**s_job)
                     cmd = f'python "{upl}" {" ".join(args)} --source_loc "{p}" --resource_name "{res}"'
                     f.write(f'if ! [[ -f "{p}" ]]; then\n    echo "Missing file: {p}" \n    exit 1\nfi\n')
+                    #note that there's no command prefix, because environment with pymipl will be expected to be active during execution.
                     f.write(f'cmd=({cmd})\n')
                     f.write(f'if ! "${{cmd[@]}}"; then\n    printf \'%s\\n\' "failed command: $cmd"\n    exit 1\nfi\n')                    
 

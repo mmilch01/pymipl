@@ -24,7 +24,7 @@ usage() {
   echo "  runtime_resource  XNAT session resource containing runtime config (yaml/scripts)"
   echo ""
   echo "required options:"
-  echo "  -microenv <proj_resource>   XNAT project resource that contains micromamba env tarball (e.g. ENVS)"
+  echo "  -microenv <proj_resource>   XNAT project resource file with micromamba env tarball (e.g. ENVS/myenv.tar.gz)"
   echo ""
   echo "repo source (exactly one required):"
   echo "  -repo_git <url@sha>         public git repo URL with commit SHA (required); cloned to /opt/packages/user/alg_repo"
@@ -85,10 +85,13 @@ trap 'rm -rf "$tmpdir"' EXIT
 # Download runtime environment from -microenv and import it into microconda. 
 env_loc="$tmpdir/$MICROENV_RESOURCE"
 python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
-    --level project \
-    --project "$PROJECT" \
-    --remote_resource "$MICROENV_RESOURCE" \
-    --local_resource "$env_loc" \
+    --xnat_host "$XNAT_HOST"                \
+    --user "$XNAT_USER"                     \
+    --password "$XNAT_PASS"                 \
+    --level project                         \
+    --project "$PROJECT"                    \
+    --remote_resource "$MICROENV_RESOURCE"  \
+    --local_resource "$env_loc"             \
     --upload 0
 
 mkdir -p /opt/packages/user
@@ -182,16 +185,19 @@ cp -f "$job_sh" "$job_log_dir/$JOB.sh"
   echo "JOB=$JOB"
 } > "$job_log_dir/$JOB.log"
 
-
 #7, However, we need to upload $job_sh to the runtime resource if it was generated, so do that.
 # Remember, resource mounts are not writable.
 
 python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
-    --level experiment \
-    --project "$PROJECT" \
-    --subject "$SUBJECT" \
-    --experiment "$EXPERIMENT" \
-    --remote_resource "$RUNTIME_RESOURCE" \
-    --local_resource "$job_log_dir"
+    --xnat_host "$XNAT_HOST"                \
+    --user "$XNAT_USER"                     \
+    --password "$XNAT_PASS"                 \
+    --level experiment                      \
+    --project "$PROJECT"                    \
+    --subject "$SUBJECT"                    \
+    --experiment "$EXPERIMENT"              \
+    --remote_resource "$RUNTIME_RESOURCE"   \
+    --local_resource "$job_log_dir"         \
+    --upload 1
 
 echo "Completed main functionality"
