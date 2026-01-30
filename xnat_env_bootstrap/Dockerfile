@@ -13,7 +13,7 @@ ARG MAMBA_ROOT_PREFIX=/opt/micromamba
 ENV MAMBA_ROOT_PREFIX=${MAMBA_ROOT_PREFIX}
 ENV PATH=/usr/local/bin:${MAMBA_ROOT_PREFIX}/bin:/usr/bin:/bin
 
-RUN mkdir -p ${MAMBA_ROOT_PREFIX} /opt/entrypoint /opt/packages/pymipl \
+RUN mkdir -p ${MAMBA_ROOT_PREFIX} /opt/entrypoint /opt/packages/pymipl /opt/packages/user /workdir \
     && curl -L https://anaconda.org/conda-forge/micromamba/2.4.0/download/linux-64/micromamba-2.4.0-0.tar.bz2 \
        | tar -xvj -C /usr/local/bin --strip-components=1 bin/micromamba \
     && chmod 0755 /usr/local/bin/micromamba && chmod -R a+rX ${MAMBA_ROOT_PREFIX} /opt/entrypoint
@@ -28,7 +28,8 @@ RUN micromamba install -y -n base -c conda-forge \
 # Bootstrap entrypoint
 COPY ./xnat_env_bootstrap/main.sh /opt/entrypoint/
 COPY *.py /opt/packages/pymipl/
+COPY xnat_workflow /opt/packages/pymipl/
 
-RUN chmod 0755 /opt/entrypoint/main.sh
+RUN chmod 0755 /opt/entrypoint/main.sh && chmod 777 /workdir && chmod 777 /opt/packages/user
 
 #CMD ["/opt/bootstrap/bootstrap.sh"]

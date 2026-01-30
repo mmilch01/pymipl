@@ -11,7 +11,7 @@ import requests
 from pyxnat import Interface
 
 
-def upload_resource(xnat_project, subject, experiment, scan, source_loc, resource_name, level="scan", XNAT_HOST=None, username=None, password=None, create_hierarchy=False):
+def upload_resource(xnat_project, subject, experiment, scan, local_resource_path, resource_name, level="scan", XNAT_HOST=None, username=None, password=None, create_hierarchy=False):
     
     if XNAT_HOST is None:
         XNAT_HOST = os.environ.get("XNAT_HOST")
@@ -67,8 +67,8 @@ def upload_resource(xnat_project, subject, experiment, scan, source_loc, resourc
         #create the resource.
         if not res_obj.exists(): res_obj.create()
         
-        src = Path(source_loc)
-        if not src.exists(): logging.error(f"Source path does not exist: {source_loc}"); return 2
+        src = Path(local_resource_path)
+        if not src.exists(): logging.error(f"Source path does not exist: {local_resource_path}"); return 2
 
         upload_items = []
         tmp_dir, tmp_zip = None,None
@@ -135,7 +135,7 @@ def main():
     ap.add_argument("--subject")
     ap.add_argument("--experiment")
     ap.add_argument("--scan")
-    ap.add_argument("--source_loc", required=True)
+    ap.add_argument("--local_resource_path", required=True)
     ap.add_argument("--resource_name", required=True)
     ap.add_argument("--xnat_host")
     ap.add_argument("--user")
@@ -156,7 +156,7 @@ def main():
     else:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
 
-    return upload_resource(args.xnat_project, args.subject, args.experiment, args.scan, args.source_loc, args.resource_name, args.level, args.xnat_host, args.user, args.password, bool(args.create_hierarchy))
+    return upload_resource(args.xnat_project, args.subject, args.experiment, args.scan, args.local_resource_path, args.resource_name, args.level, args.xnat_host, args.user, args.password, bool(args.create_hierarchy))
 
 
 if __name__ == "__main__":
