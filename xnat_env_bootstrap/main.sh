@@ -52,7 +52,7 @@ XNAT_PASS="${XNAT_PASS:-}"
 MICROENV_RESOURCE=""
 JOB=""
 REPO_GIT=""
-REP_ENV_DIR=""
+REPO_ENV_DIR=""
 INPUT_MOUNT="/input"
 PYMIPL_DIR="/opt/packages/pymipl"
 
@@ -86,9 +86,9 @@ trap 'rm -rf "$tmpdir"' EXIT
 env_loc="$tmpdir/$MICROENV_RESOURCE"
 python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
     --level project \
-    --xnat_project "$PROJECT" \
-    --resource_name "$MICROENV_RESOURCE" \
-    --local_path "$env_loc"
+    --project "$PROJECT" \
+    --remote_resource "$MICROENV_RESOURCE" \
+    --local_resource "$env_loc"
 
 mkdir -p /opt/packages/user
 
@@ -186,11 +186,11 @@ cp -f "$job_sh" "$job_log_dir/$JOB.sh"
 # Remember, resource mounts are not writable.
 
 python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
-    --level session \
-    --xnat_project "$PROJECT" \
-    --xnat_subject "$SUBJECT" \
-    --xnat_experiment "$EXPERIMENT" \
-    --resource_name "$RUNTIME_RESOURCE" \
-    --local_path "$job_log_dir"
+    --level experiment \
+    --project "$PROJECT" \
+    --subject "$SUBJECT" \
+    --experiment "$EXPERIMENT" \
+    --remote_resource "$RUNTIME_RESOURCE" \
+    --local_resource "$job_log_dir"
 
 echo "Completed main functionality"
