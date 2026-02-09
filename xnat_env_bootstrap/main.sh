@@ -94,6 +94,8 @@ python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
     --local_resource "$env_loc"             \
     --upload 0
 
+if (( $? )); then exit_with_error "Failed to download microenv: $MICROENV_RESOURCE"; fi
+
 mkdir -p /opt/packages/user
 
 # extract runtime environment to workdir
@@ -101,6 +103,8 @@ env_repo_prefix="/opt/packages/user/env_repo"
 mkdir -p "$env_repo_prefix"
 rm -rf "$env_repo_prefix"/*
 tar -xzf "$env_loc" -C "$env_repo_prefix"
+if (( $? )); then exit_with_error "Failed to extract env tarball: $env_loc"; fi
+
 
 # clone or link the main algorithm repo to standard location.
 alg_repo_prefix="/opt/packages/user/alg_repo"
@@ -116,6 +120,8 @@ if [[ -n "$REPO_GIT" ]]; then
   [[ -n "$repo_url" && -n "$repo_sha" && "$repo_sha" != "$repo_url" ]] || exit_with_error "-repo_git must be url@sha (SHA required)"
   git clone "$repo_url" "$alg_repo_prefix"
   (cd "$alg_repo_prefix" && git checkout "$repo_sha")
+  if (( $? )); then exit_with_error "git checkout failed: $repo_url:$repo_sha"; fi
+
 #link main algorithm repo from the downloaded environment
 elif [[ -n "$REPO_ENV_DIR" ]]; then
   repo_in_env="$REPO_ENV_DIR"
@@ -125,8 +131,8 @@ elif [[ -n "$REPO_ENV_DIR" ]]; then
   esac
   [[ -d "$repo_in_env" ]] || exit_with_error "-repo_env_dir does not exist after env extraction: $repo_in_env"
   ln -s "$repo_in_env" "$alg_repo_prefix"
+  if (( $? )); then exit_with_error "Failed to link repo: $repo_in_env -> $alg_repo_prefix"; fi
 fi
-
 
 resource_loc="$INPUT_MOUNT/RESOURCES/$RUNTIME_RESOURCE"
 job_sh_remote="$resource_loc/$JOB.sh"
@@ -138,6 +144,7 @@ job_sh="$tmpdir/$JOB.sh"
 generated=0
 if [ -f "$job_sh_remote" ]; then 
     cp -f "$job_sh_remote" "$job_sh"
+    if (( $? )); then exit_with_error "Failed to copy job script: $job_sh_remote"; fi
 
 elif [ -f "$job_yaml_remote" ]; then 
     python "$PYMIPL_DIR"/xnat_workflow/run_container_adapter.py \
@@ -148,6 +155,7 @@ elif [ -f "$job_yaml_remote" ]; then
     --pymipl_dir "$PYMIPL_DIR" \
     --project "$PROJECT" \
     --main_repo_dir "$alg_repo_prefix"
+    if (( $? )); then exit_with_error "Failed to generate job script from: $job_yaml_remote"; fi
     generated=1
 else 
     #4. If $INPUT directory has no $job.yaml or $job.sh, exit with error
@@ -156,6 +164,7 @@ fi
 #5. Execute main.sh. That script would upload outputs back to xnat on its own.
 chmod +x "$job_sh"
 "$job_sh" 
+if (( $? )); then exit_with_error "Job script failed: $job_sh"; fi
 
 # There's curretnly a catch: the script would need installed PYMIPL_DIR and pyxnat in the 
 # default invironment but run the rest of the commands in downloaded environment. How to merge the two?
@@ -199,5 +208,7 @@ python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
     --remote_resource "$RUNTIME_RESOURCE"   \
     --local_resource "$job_log_dir"         \
     --upload 1
+
+if (( $? )); then exit_with_error "Failed uploading logs: $job_sh"; fi
 
 echo "Completed main functionality"
