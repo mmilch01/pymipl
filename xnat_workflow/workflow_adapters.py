@@ -51,7 +51,7 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
                 #insert command prefix if not pymipl command.
                 if step_command_prefix is not None and cmd.find('{g_pymipl_dir}') == -1:
                     f.write(f'cmd=({step_command_prefix} {cmd})\n')
-                else 
+                else: 
                     f.write(f'cmd=({cmd})\n')
                 f.write(f'if ! "${{cmd[@]}}"; then\n    echo "{error_message}"\n    exit 1\nfi\n')
             args = [
@@ -61,7 +61,7 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
                 f'--scan "{s_job["job_scan_id"]}"',
             ]
             #form upload command syntax
-            upl = str(Path(s_job["g_pymipl_dir"]) / "upload_resource_to_xnat.py").format(**s_job)
+            upl = str(Path(s_job["g_pymipl_dir"]) / "sync_resource_with_xnat.py").format(**s_job)
             
             #write step commands to upload each specified local file to the resource.
             for res, files in (s.get("step_upload_files_to_resource") or {}).items():
