@@ -46,9 +46,9 @@ if [[ $# -lt 4 ]]; then usage; exit -1; fi
 PROJECT="$1"; SUBJECT="$2"; EXPERIMENT="$3"; RUNTIME_RESOURCE="$4"; shift 4
 
 # ---- defaults ----
-XNAT_HOST="${XNAT_HOST:-}"
-XNAT_USER="${XNAT_USER:-}"
-XNAT_PASS="${XNAT_PASS:-}"
+XNAT_HOST="${XNAT_HOST}"
+XNAT_USER="${XNAT_USER}"
+XNAT_PASS="${XNAT_PASS}"
 MICROENV_RESOURCE=""
 JOB=""
 REPO_GIT=""
@@ -59,15 +59,15 @@ PYMIPL_DIR="/opt/packages/pymipl"
 # ---- parse options ----
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -host) XNAT_HOST="${2:-}"; shift 2 ;;
-    -user) XNAT_USER="${2:-}"; shift 2 ;;
-    -pass) XNAT_PASS="${2:-}"; shift 2 ;;
-    -microenv) MICROENV_RESOURCE="${2:-}"; shift 2 ;;
-    -job) JOB="${2:-}"; shift 2 ;;
-    -input_mount) INPUT_MOUNT="${2:-}"; shift 2 ;;
-    -repo_git) REPO_GIT="${2:-}"; shift 2 ;;
-    -repo_env_dir) REPO_ENV_DIR="${2:-}"; shift 2 ;;
-    -pymipl_dir) PYMIPL_DIR="${2:-}"; shift 2 ;;
+    -host) XNAT_HOST="${2}"; shift 2 ;;
+    -user) XNAT_USER="${2}"; shift 2 ;;
+    -pass) XNAT_PASS="${2}"; shift 2 ;;
+    -microenv) MICROENV_RESOURCE="${2}"; shift 2 ;;
+    -job) JOB="${2}"; shift 2 ;;
+    -input_mount) INPUT_MOUNT="${2}"; shift 2 ;;
+    -repo_git) REPO_GIT="${2}"; shift 2 ;;
+    -repo_env_dir) REPO_ENV_DIR="${2}"; shift 2 ;;
+    -pymipl_dir) PYMIPL_DIR="${2}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) exit_with_error "Unknown option: $1" ;;
   esac
