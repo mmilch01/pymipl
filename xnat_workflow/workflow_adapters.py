@@ -205,19 +205,20 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
             #write step command with substituted values to batch file
             if "step_command" in s: 
                 cmd = str(s["step_command"]).format(**s_job)
-                if error_message is None: error_message=f'command failed: {cmd}'
+                if error_message is None: error_message=f'Command failed, exiting'
                 #insert command prefix if not pymipl command.
                 if step_command_prefix is not None and cmd.find('{g_pymipl_dir}') == -1:
                     f.write(f'cmd=({step_command_prefix} {cmd})\n')
                 else: 
                     f.write(f'cmd=({cmd})\n')
+                f.write(f'echo Running command: {cmd}\n')
                 f.write(f'if ! "${{cmd[@]}}"; then\n    echo "{error_message}"\n    exit 1\nfi\n')
             args = [
                 f'--xnat_project "{s_job["g_project"]}"',
                 f'--subject "{s_job["job_subject"]}"',
-                f'--experiment "{s_job["job_exp_label"]}"',
-                f'--scan "{s_job["job_scan_id"]}"',
+                f'--experiment "{s_job["job_exp_label"]}"'
             ]
+            if 'job_scan_id' in s_job.keys(): args+=[f'--scan "{s_job["job_scan_id"]}"']
             #form upload command syntax
             upl = str(Path(s_job["g_pymipl_dir"]) / "sync_resource_with_xnat.py").format(**s_job)
             
@@ -229,7 +230,8 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
                     f.write(f'if ! [[ -f "{p}" ]]; then\n    echo "Missing file: {p}" \n    exit 1\nfi\n')
                     #note that there's no command prefix, because environment with pymipl will be expected to be active during execution.
                     f.write(f'cmd=({cmd})\n')
-                    f.write(f'if ! "${{cmd[@]}}"; then\n    printf \'%s\\n\' "failed command: $cmd"\n    exit 1\nfi\n')                    
+                    f.write(f'echo Running command: {cmd}\n')
+                    f.write(f'if ! "${{cmd[@]}}"; then\n    printf \'%s\\n\' "command failed, exiting"\n    exit 1\nfi\n')     
 
             #write step commands to upload each specified local directory to the resource.
             for res, dirs in (s.get("step_upload_dirs_to_resource") or {}).items():

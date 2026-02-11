@@ -28,6 +28,7 @@ def brats_preprocess_pipeline(patient_id: str, modality_folders: dict, output_di
     # 1) DICOM -> NIfTI + reorient to RAI
     nifti_files = {}
     for mod, dicom_path in modality_folders.items():
+        print(f'converting DICOM to NIFTI for {mod}')
         out_file = os.path.join(temp_dir, f"{mod}.nii.gz")
         dicom2nifti.dicom_series_to_nifti(dicom_path, out_file, reorient_nifti=True)
         img = ants.image_read(out_file)
@@ -40,6 +41,7 @@ def brats_preprocess_pipeline(patient_id: str, modality_folders: dict, output_di
     ref_brain_path = os.path.join(final_dir, f"{patient_id}_{ref_mod}_brain.nii.gz")
 
     # 3) Skull strip reference using HD-BET
+    print('running HD-BET')
     subprocess.run(
         ["python", "-m", "HD_BET.entry_point", "--save_bet_mask", "-i", nifti_files[ref_mod], "-o", ref_brain_path],
         capture_output=True,
@@ -51,6 +53,7 @@ def brats_preprocess_pipeline(patient_id: str, modality_folders: dict, output_di
     ref_brain = ants.image_read(ref_brain_path)
 
     # 4) Register + mask other modalities to reference
+    print('Running spatial registration and applying mask to other modalities')
     for mod, moving_path in nifti_files.items():
         if mod == ref_mod:
             continue
@@ -58,7 +61,7 @@ def brats_preprocess_pipeline(patient_id: str, modality_folders: dict, output_di
         reg = ants.registration(fixed=ref_brain, moving=moving_img, type_of_transform="Rigid")
         stripped = ants.mask_image(reg["warpedmovout"], ref_mask)
         ants.image_write(stripped, os.path.join(final_dir, f"{patient_id}_{mod}_brain.nii.gz"))
-
+    
     shutil.rmtree(temp_dir)
 
 
