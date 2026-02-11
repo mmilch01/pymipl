@@ -34,7 +34,7 @@ usage() {
   echo "  -host        <XNAT_HOST>        [default: \$XNAT_HOST]"
   echo "  -user        <XNAT_USER>        [default: \$XNAT_USER]"
   echo "  -pass        <XNAT_PASS>        [default: \$XNAT_PASS]"
-  echo "  -job    <string>                job name. will look for \$job.yaml or \$job.sh."
+  echo "  -workflow    <string>           workflow name. will look for all jobs matching workflow name in session resources."
   echo "  -input_mount <path>             [default: /input]"
   echo "  -pymipl_dir  <path>             [default: /opt/packages/pymipl]"
   #option for nnUnet as an alternative to proj_resource, will be added later
