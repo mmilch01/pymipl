@@ -15,13 +15,13 @@ set -eu
 exit_with_error() { echo "ERROR: $*" 1>&2; usage 1>&2; exit 2; }
 
 usage() {
-  echo "usage: main.sh <project> <subject> <experiment> <runtime_resource> [options]"
+  echo "usage: main.sh <project> <subject> <experiment> <workflow_id> [options]"
   echo ""
   echo "required positional:"
   echo "  project           XNAT project"
   echo "  subject           XNAT subject label"
   echo "  experiment        XNAT experiment label"
-  echo "  runtime_resource  XNAT session resource containing runtime config (yaml/scripts)"
+  echo "  workflow_id  XNAT session resource containing runtime config and, optionally, outputs"
   echo ""
   echo "required options:"
   echo "  -microenv <proj_resource>   XNAT project resource file with micromamba env tarball (e.g. ENVS/myenv.tar.gz)"
@@ -34,23 +34,22 @@ usage() {
   echo "  -host        <XNAT_HOST>        [default: \$XNAT_HOST]"
   echo "  -user        <XNAT_USER>        [default: \$XNAT_USER]"
   echo "  -pass        <XNAT_PASS>        [default: \$XNAT_PASS]"
-  echo "  -workflow    <string>           workflow name. will look for all jobs matching workflow name in session resources."
   echo "  -input_mount <path>             [default: /input]"
   echo "  -pymipl_dir  <path>             [default: /opt/packages/pymipl]"
   #option for nnUnet as an alternative to proj_resource, will be added later
 }
 
+
 cmdline="$0 $*"
 
 if [[ $# -lt 4 ]]; then usage; exit -1; fi
-PROJECT="$1"; SUBJECT="$2"; EXPERIMENT="$3"; RUNTIME_RESOURCE="$4"; shift 4
+PROJECT="$1"; SUBJECT="$2"; EXPERIMENT="$3"; WORKFLOW_ID="$4"; shift 4
 
 # ---- defaults ----
 XNAT_HOST="${XNAT_HOST}"
 XNAT_USER="${XNAT_USER}"
 XNAT_PASS="${XNAT_PASS}"
 MICROENV_RESOURCE=""
-JOB=""
 REPO_GIT=""
 REPO_ENV_DIR=""
 INPUT_MOUNT="/input"
@@ -63,7 +62,6 @@ while [[ $# -gt 0 ]]; do
     -user) XNAT_USER="${2}"; shift 2 ;;
     -pass) XNAT_PASS="${2}"; shift 2 ;;
     -microenv) MICROENV_RESOURCE="${2}"; shift 2 ;;
-    -job) JOB="${2}"; shift 2 ;;
     -input_mount) INPUT_MOUNT="${2}"; shift 2 ;;
     -repo_git) REPO_GIT="${2}"; shift 2 ;;
     -repo_env_dir) REPO_ENV_DIR="${2}"; shift 2 ;;
@@ -75,7 +73,6 @@ done
 # ---- validate required ----
 [[ -n "$MICROENV_RESOURCE" ]] || exit_with_error "Missing required: -microenv"
 [[ -n "$XNAT_HOST" && -n "$XNAT_USER" && -n "$XNAT_PASS" ]] || exit_with_error "Missing XNAT credentials"
-[[ -n "$JOB" ]] || exit_with_error "Must specify job name"
 
 mkdir -p /workdir
 
@@ -134,10 +131,10 @@ elif [[ -n "$REPO_ENV_DIR" ]]; then
   if (( $? )); then exit_with_error "Failed to link repo: $repo_in_env -> $alg_repo_prefix"; fi
 fi
 
-resource_loc="$INPUT_MOUNT/RESOURCES/$RUNTIME_RESOURCE"
-job_sh_remote="$resource_loc/$JOB.sh"
-job_yaml_remote="$resource_loc/$JOB.yaml"
-job_sh="$tmpdir/$JOB.sh"
+resource_loc="$INPUT_MOUNT/RESOURCES/$WORKFLOW_ID"
+job_sh_remote="$resource_loc/job.sh"
+job_yaml_remote="$resource_loc/job.yaml"
+job_sh="$tmpdir/job.sh"
 
 
 #copy or compile job shell script
@@ -173,9 +170,9 @@ if (( $? )); then exit_with_error "Job script failed: $job_sh"; fi
 
 #6. write log to job runtime log directory. stdout and stderr will be uploaded via container service
 ts="$(date +%m%d%H%M)"
-job_log_dir="$tmpdir/$JOB-$ts"
+job_log_dir="$tmpdir/job-$ts"
 mkdir -p "$job_log_dir"
-cp -f "$job_sh" "$job_log_dir/$JOB.sh"
+cp -f "$job_sh" "$job_log_dir/job.sh"
 
 {
   echo "timestamp=$ts"
@@ -183,7 +180,7 @@ cp -f "$job_sh" "$job_log_dir/$JOB.sh"
   echo "PROJECT=$PROJECT"
   echo "SUBJECT=$SUBJECT"
   echo "EXPERIMENT=$EXPERIMENT"
-  echo "RUNTIME_RESOURCE=$RUNTIME_RESOURCE"
+  echo "WORKFLOW_ID=$WORKFLOW_ID"
   echo "MICROENV_RESOURCE=$MICROENV_RESOURCE"
   echo "REPO_GIT=$REPO_GIT"
   echo "REPO_ENV_DIR=$REPO_ENV_DIR"
@@ -191,8 +188,7 @@ cp -f "$job_sh" "$job_log_dir/$JOB.sh"
   echo "INPUT_MOUNT=$INPUT_MOUNT"
   echo "PYMIPL_DIR=$PYMIPL_DIR"
   echo "XNAT_HOST=$XNAT_HOST"
-  echo "JOB=$JOB"
-} > "$job_log_dir/$JOB.log"
+} > "$job_log_dir/job.log"
 
 #7, However, we need to upload $job_sh to the runtime resource if it was generated, so do that.
 # Remember, resource mounts are not writable.
@@ -205,7 +201,7 @@ python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
     --project "$PROJECT"                    \
     --subject "$SUBJECT"                    \
     --experiment "$EXPERIMENT"              \
-    --remote_resource "$RUNTIME_RESOURCE"   \
+    --remote_resource "$WORKFLOW_ID"   \
     --local_resource "$job_log_dir"         \
     --upload 1
 

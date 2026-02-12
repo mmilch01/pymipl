@@ -171,13 +171,9 @@ def init_global_vars_bootstrap_image(global_vars,xnat_project):
     global_vars['g_env_repo_dir']=Path('/opt/packages/user/env_repo')
     global_vars['g_project']=xnat_project
 
-def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=None, step_command_prefix=None):
+def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=None):
     '''
     cmd must be single command with no |, >, &&, ;, variables, command substitutions, etc.
-    Use step_command_prefix only for calls that need to execute in a custom environment (e.g. duneai);
-    otherwise, environment with pymipl is assumed to be active at the time of batch execution.
-    So, if your step runs a pymipl script, no step_command_prefix should be specified.
-    For example, step_command_prefix can be 'micromamba -p /opt/packages/user/env_repo' for runs inside containers.
     '''
         
     d = yaml.safe_load(job_yaml) if isinstance(job_yaml, str) else dict(job_yaml)
@@ -207,20 +203,17 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
                 cmd = str(s["step_command"]).format(**s_job)
                 if error_message is None: error_message=f'Command failed, exiting'
                 #insert command prefix if not pymipl command.
-                if step_command_prefix is not None and cmd.find('{g_pymipl_dir}') == -1:
-                    f.write(f'cmd=({step_command_prefix} {cmd})\n')
-                else: 
-                    f.write(f'cmd=({cmd})\n')
+                f.write(f'cmd=({cmd})\n')
                 f.write(f'echo Running command: {cmd}\n')
                 f.write(f'if ! "${{cmd[@]}}"; then\n    echo "{error_message}"\n    exit 1\nfi\n')
             args = [
-                f'--xnat_project "{s_job["g_project"]}"',
+                f'--project "{s_job["g_project"]}"',
                 f'--subject "{s_job["job_subject"]}"',
                 f'--experiment "{s_job["job_exp_label"]}"'
             ]
             if 'job_scan_id' in s_job.keys(): args+=[f'--scan "{s_job["job_scan_id"]}"']
             #form upload command syntax
-            upl = str(Path(s_job["g_pymipl_dir"]) / "sync_resource_with_xnat.py").format(**s_job)
+            upl = str(Path(s_job["g_pymipl_dir"]) / "sync-resource-with-xnat.py").format(**s_job)
             
             #write step commands to upload each specified local file to the resource.
             for res, files in (s.get("step_upload_files_to_resource") or {}).items():
