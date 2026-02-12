@@ -86,10 +86,9 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None, exp
             if src.is_file(): upload_items = [src]
             else:
                 tmp_dir = Path(tempfile.mkdtemp(prefix="xnat_upload_"))
-                base = tmp_dir / "payload"
-                shutil.copytree(src, base)
-                tmp_zip = Path(str(base) + ".zip")
-                shutil.make_archive(str(base), "zip", root_dir=tmp_dir, base_dir="payload")
+                tmp_zip_base = tmp_dir / "upload"
+                tmp_zip = tmp_zip_base.with_suffix(".zip")
+                shutil.make_archive(str(tmp_zip_base), "zip", root_dir=src, base_dir=".")
                 upload_items = [tmp_zip]
 
             with requests.Session() as s:

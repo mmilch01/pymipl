@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import argparse
+import logging
 from workflow_adapters import sync_resource_xnat
 
 def main():
