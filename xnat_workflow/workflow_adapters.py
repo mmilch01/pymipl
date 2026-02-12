@@ -169,6 +169,7 @@ def init_global_vars_bootstrap_image(global_vars,xnat_project):
     global_vars['g_local_workdir_path']=Path('/workdir')
     global_vars['g_pymipl_dir']=Path('/opt/packages/pymipl')
     global_vars['g_alg_repo_dir']=Path('/opt/packages/user/alg_repo')
+    global_vars['g_env_repo_dir']=Path('/opt/packages/user/env_repo')
     global_vars['g_project']=xnat_project
 
 def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=None, step_command_prefix=None):
