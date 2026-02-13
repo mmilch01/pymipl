@@ -95,20 +95,20 @@ cmd=($run_python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
     --local_resource "$env_loc"             \
     --upload 0)
 echo "${cmd[@]}"
-"${cmd[@]}"
-
-if (( $? )); then exit_with_error "Failed to download microenv: $MICROENV_RESOURCE"; fi
+#TODO DEBUG only
+#"${cmd[@]}"
+#if (( $? )); then exit_with_error "Failed to download microenv: $MICROENV_RESOURCE"; fi
 
 mkdir -p /opt/packages/user
 
 # extract runtime environment to workdir
+#TODO DEBUG ONLY
 env_repo_prefix="/opt/packages/user/env_repo"
-mkdir -p "$env_repo_prefix"
-rm -rf "$env_repo_prefix"/*
-
+#mkdir -p "$env_repo_prefix"
+#rm -rf "$env_repo_prefix"/*
 echo tar -xzf "$env_loc" -C "$env_repo_prefix"
-tar -xzf "$env_loc" -C "$env_repo_prefix"
-if (( $? )); then exit_with_error "Failed to extract env tarball: $env_loc"; fi
+#tar -xzf "$env_loc" -C "$env_repo_prefix"
+#if (( $? )); then exit_with_error "Failed to extract env tarball: $env_loc"; fi
 
 
 # clone or link the main algorithm repo to standard location.
