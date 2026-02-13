@@ -28,7 +28,7 @@ RUN micromamba install -y -n base -c conda-forge \
 # Bootstrap entrypoint
 COPY ./xnat_env_bootstrap/main.sh /opt/entrypoint/
 COPY *.py /opt/packages/pymipl/
-COPY xnat_workflow /opt/packages/pymipl/
+COPY xnat_workflow /opt/packages/pymipl/xnat_workflow
 
 RUN chmod 0755 /opt/entrypoint/main.sh && chmod 777 /workdir && chmod 777 /opt/packages/user
 
