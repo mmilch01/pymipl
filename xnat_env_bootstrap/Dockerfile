@@ -22,7 +22,7 @@ RUN micromamba install -y -n base -c conda-forge \
     python=3.8.16 \
     requests \
     pip \
-    && micromamba run -n base python -m pip install --no-cache-dir pyxnat \
+    && micromamba run -n base python -m pip install --no-cache-dir pyxnat pyyaml requests \
     && micromamba clean -a -y
 
 # Bootstrap entrypoint
