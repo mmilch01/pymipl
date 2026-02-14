@@ -72,6 +72,9 @@ while [[ $# -gt 0 ]]; do
     *) exit_with_error "Unknown option: $1" ;;
   esac
 done
+
+if [ "$REPO_GIT" == "NONE" ]; then REPO_GIT=""; fi
+
 # ---- validate required ----
 [[ -n "$MICROENV_RESOURCE" ]] || exit_with_error "Missing required: -microenv"
 [[ -n "$XNAT_HOST" && -n "$XNAT_USER" && -n "$XNAT_PASS" ]] || exit_with_error "Missing XNAT credentials"
