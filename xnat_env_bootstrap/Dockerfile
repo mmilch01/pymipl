@@ -1,34 +1,11 @@
-FROM ubuntu:22.04
+FROM xnat-env-bootstrap:brats
 
-#
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl git zip unzip bzip2 ca-certificates\
-    && rm -rf /var/lib/apt/lists/*
-
-# micromamba (system-wide, no user assumptions)
-ARG MAMBA_ROOT_PREFIX=/opt/micromamba
-ENV MAMBA_ROOT_PREFIX=${MAMBA_ROOT_PREFIX}
-ENV PATH=/usr/local/bin:${MAMBA_ROOT_PREFIX}/bin:/usr/bin:/bin
-
-RUN mkdir -p ${MAMBA_ROOT_PREFIX} /opt/entrypoint /opt/packages/pymipl /opt/packages/user /workdir \
-    && curl -L https://anaconda.org/conda-forge/micromamba/2.4.0/download/linux-64/micromamba-2.4.0-0.tar.bz2 \
-       | tar -xvj -C /usr/local/bin --strip-components=1 bin/micromamba \
-    && chmod 0755 /usr/local/bin/micromamba && chmod -R a+rX ${MAMBA_ROOT_PREFIX} /opt/entrypoint
-
-RUN micromamba install -y -n base -c conda-forge \
-    python=3.8.16 \
-    requests \
-    pip \
-    && micromamba run -n base python -m pip install --no-cache-dir pyxnat \
-    && micromamba clean -a -y
+#just overwrite changes to pymipl sources if any.
 
 # Bootstrap entrypoint
 COPY ./xnat_env_bootstrap/main.sh /opt/entrypoint/
 COPY *.py /opt/packages/pymipl/
-COPY xnat_workflow /opt/packages/pymipl/
+COPY xnat_workflow /opt/packages/pymipl/xnat_workflow
 
 RUN chmod 0755 /opt/entrypoint/main.sh && chmod 777 /workdir && chmod 777 /opt/packages/user
 
