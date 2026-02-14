@@ -53,15 +53,27 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None, exp
                     logging.error(f"Scan {scan_id} does not exist under experiment {exp}")
                     return 3
                 scan_obj.create(); logging.info(f"Created scan '{scan_id}'")
+    
+        if level == "project": 
+            res_obj = project.resource(resource_name)            
+            rlist=project.resources().get()
+            logging.info(f"Level project, resources:{rlist}")
+            with requests.Session() as s:
+                    s.auth = (username, password)
+                    url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/resources?format=json"
+                    r = s.get(url)
+                    logging.info(f"GET {url} -> {r.status_code}")
+                    logging.info(r.text[:2000])
 
-        if level == "project": res_obj = project.resource(resource_name)
+
+        
         elif level == "subject": res_obj = subj_obj.resource(resource_name)
         elif level == "experiment": res_obj = exp_obj.resource(resource_name)
         elif level == "scan": res_obj = scan_obj.resource(resource_name)
 
         if upload and not res_obj.exists(): res_obj.create()
         if not upload and not res_obj.exists(): 
-            logging.error(f"Resource '{resource_name}' does not exist at level {level}")
+            logging.error(f"Resource '{resource_name}' does not exist at level {level}, res_obj:{res_obj}")
             return 4
 
     except Exception as e:
