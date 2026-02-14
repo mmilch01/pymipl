@@ -1,0 +1,129 @@
+{
+  "name": "xnat-ai-workflow",
+  "label": "XNAT AI Workflow",
+  "description": "Runs /opt/entrypoint/main.sh at session level; mounts session directory at /input.",
+  "version": "0.01",
+  "image": "mmilch01/xnat-ai-workflow:latest",
+  "type": "docker",
+  "command-line": "/opt/entrypoint/main.sh #PROJECT# #SUBJECT# #EXPERIMENT# #WORKFLOW_ID# -microenv #MICROENV# -repo_git #REPO_GIT#",
+  "mounts": [
+    {
+      "name": "input",
+      "writable": false,
+      "path": "/input"
+    }
+  ],
+  "environment-variables": {},
+  "ports": {},
+  "inputs": [
+    {
+      "name": "workflow_id",
+      "description": "XNAT-AI workflow ID",
+      "type": "string",
+      "default-value": "NONE",
+      "required": true,
+      "replacement-key": "#WORKFLOW_ID#",
+      "select-values": []
+    },
+    {
+      "name": "microenv",
+      "description": "XNAT project resource path to micromamba env tarball (e.g. ENVS/myenv.tar.gz).",
+      "type": "string",
+      "default-value": "NONE",
+      "required": true,
+      "replacement-key": "#MICROENV#",
+      "select-values": []
+    },
+    {
+      "name": "repo_git",
+      "description": "Optional: public git repo URL and commit SHA as url@sha.",
+      "type": "string",
+      "default-value": "NONE",
+      "required": true,
+      "replacement-key": "#REPO_GIT#",
+      "select-values": []
+    },
+    {
+      "name": "PROJECT",
+      "type": "string",
+      "required": true,
+      "select-values": []
+    },
+    {
+      "name": "SUBJECT",
+      "type": "string",
+      "required": true,
+      "select-values": []
+    },
+    {
+      "name": "EXPERIMENT",
+      "type": "string",
+      "required": true,
+      "select-values": []
+    }
+  ],
+  "outputs": [],
+  "xnat": [
+    {
+      "name": "session-level",
+      "label": "XNAT AI workflow",
+      "description": "XNAT AI workflow",
+      "contexts": [
+        "xnat:imageSessionData"
+      ],
+      "external-inputs": [
+        {
+          "name": "session",
+          "description": "Input session",
+          "type": "Session",
+          "required": true,
+          "provides-files-for-command-mount": "input",
+          "load-children": false
+        }
+      ],
+      "derived-inputs": [
+        {
+          "name": "project-id",
+          "description": "Project id",
+          "type": "string",
+          "required": true,
+          "provides-value-for-command-input": "PROJECT",
+          "load-children": true,
+          "derived-from-wrapper-input": "session",
+          "derived-from-xnat-object-property": "project-id",
+          "multiple": false
+        },
+        {
+          "name": "subject-label",
+          "description": "subject label",
+          "type": "string",
+          "required": true,
+          "provides-value-for-command-input": "SUBJECT",
+          "load-children": true,
+          "derived-from-wrapper-input": "session",
+          "derived-from-xnat-object-property": "subject-id",
+          "multiple": false
+        },
+        {
+          "name": "session-label",
+          "description": "session label",
+          "type": "string",
+          "required": true,
+          "provides-value-for-command-input": "EXPERIMENT",
+          "load-children": true,
+          "derived-from-wrapper-input": "session",
+          "derived-from-xnat-object-property": "label",
+          "multiple": false
+        }
+      ],
+      "output-handlers": []
+    }
+  ],
+  "reserve-memory": 16384,
+  "limit-cpu": 8,
+  "container-labels": {},
+  "generic-resources": {},
+  "ulimits": {},
+  "secrets": [],
+  "visibility": "public"
+}
