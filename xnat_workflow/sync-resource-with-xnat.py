@@ -17,6 +17,7 @@ def main():
     ap.add_argument("--xnat_host")
     ap.add_argument("--user")
     ap.add_argument("--password")
+    ap.add_argument("--jsessionid", help="XNAT JSESSIONID token (overrides user/password)")    
     ap.add_argument("--create_hierarchy", type=int, choices=[0, 1], default=0)
     ap.add_argument("--logfile")
     args = ap.parse_args()
@@ -28,7 +29,11 @@ def main():
     if args.logfile: logging.basicConfig(filename=args.logfile + ".log", encoding="utf-8", filemode="a", format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
     else: logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
 
-    return sync_resource_xnat(args.local_resource, args.remote_resource, args.project, args.subject, args.experiment, args.scan, bool(args.upload), args.level, args.xnat_host, args.user, args.password, bool(args.create_hierarchy))
+    return sync_resource_xnat(args.local_resource, args.remote_resource, args.project, 
+                              args.subject, args.experiment, args.scan, 
+                              bool(args.upload), args.level, args.xnat_host, 
+                              args.user, args.password, args.jsessionid,
+                              bool(args.create_hierarchy))
 
 if __name__ == "__main__":
     sys.exit(main())
