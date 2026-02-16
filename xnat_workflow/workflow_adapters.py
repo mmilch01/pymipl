@@ -11,7 +11,7 @@ import os
 
 def sync_resource_xnat(local_resource, resource_name, project, subject=None, 
        experiment=None, scan=None, upload=True, level="scan", XNAT_HOST=None, 
-       username=None, password=None, jsessionid=None,create_hierarchy=False, debug=False):
+       username=None, password=None, jsessionid=None, xnat_interface=None, create_hierarchy=False, debug=False):
 
     if XNAT_HOST is None: XNAT_HOST = os.environ.get("XNAT_HOST")
     if not XNAT_HOST: logging.error("Missing XNAT_HOST"); return 2
@@ -31,9 +31,16 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
     levels = {'project': 1, 'subject': 2, 'experiment': 3, 'scan': 4}
 
     try:
-        level_ord = levels[level]        
-        xnat = ( Interface(server=str(XNAT_HOST), user=username, password=password) if jsessionid is None 
-            else Interface(server=str(XNAT_HOST), cookies={"JSESSIONID": jsessionid}) )
+        level_ord = levels[level]     
+        if xnat_interface is not None: 
+            xnat=xnat_interface
+        else:
+            if jsessionid is None:
+                xnat = Interface(server=str(XNAT_HOST), user=username, password=password)
+            else:
+                xnat = Interface(server=str(XNAT_HOST), anonymous=True)
+                xnat._http.cookies.set("JSESSIONID", jsessionid)
+
         project = xnat.select.project(PROJECT_ID)
 
         if level_ord >= levels['subject']:
