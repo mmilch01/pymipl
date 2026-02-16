@@ -11,11 +11,12 @@ import os
 
 def sync_resource_xnat(local_resource, resource_name, project, subject=None, 
        experiment=None, scan=None, upload=True, level="scan", XNAT_HOST=None, 
-       username=None, password=None, jsessionid=None, xnat_interface=None, create_hierarchy=False, debug=False):
+       username=None, password=None, xnat_interface=None, create_hierarchy=False, debug=False):
 
     if XNAT_HOST is None: XNAT_HOST = os.environ.get("XNAT_HOST")
     if not XNAT_HOST: logging.error("Missing XNAT_HOST"); return 2
-    if jsessionid is None:
+        
+    if xnat_interface is None:
         if username is None or password is None:
             username = os.environ.get("XNAT_USER"); password = os.environ.get("XNAT_PASS")
         if not username or not password:
@@ -31,15 +32,14 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
     levels = {'project': 1, 'subject': 2, 'experiment': 3, 'scan': 4}
 
     try:
-        level_ord = levels[level]     
+        level_ord = levels[level]
+        new_session = False
+        
         if xnat_interface is not None: 
             xnat=xnat_interface
         else:
-            if jsessionid is None:
-                xnat = Interface(server=str(XNAT_HOST), user=username, password=password)
-            else:
-                xnat = Interface(server=str(XNAT_HOST), anonymous=True)
-                xnat._http.cookies.set("JSESSIONID", jsessionid)
+            xnat = Interface(server=str(XNAT_HOST), user=username, password=password)
+            new_session = True
 
         project = xnat.select.project(PROJECT_ID)
 
@@ -72,14 +72,11 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             res_obj = project.resource(resource_name)            
             rlist=project.resources().get()
             logging.info(f"Level project, resources:{rlist}")
-            with requests.Session() as s:
-                    if jsessionid is not None: s.headers.update({"Cookie": f"JSESSIONID={jsessionid}"})
-                    else:  s.auth = (username, password)                    
+            with xnat._http as s:
                     url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/resources?format=json"
                     r = s.get(url)
                     logging.info(f"GET {url} -> {r.status_code}")
                     logging.info(r.text[:2000])
-
 
         
         elif level == "subject": res_obj = subj_obj.resource(resource_name)
@@ -95,6 +92,8 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
         print(e)
         logging.error(e)
         return 5
+    finally:
+        if new_session: xnat.disconnect()
 
     if level == "project": base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/resources/{resource_name}/files"
     if level == "subject": base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/subjects/{subj}/resources/{resource_name}/files"
@@ -118,11 +117,8 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 shutil.make_archive(str(tmp_zip_base), "zip", root_dir=src, base_dir=".")
                 upload_items = [tmp_zip]
 
-            with requests.Session() as s:
+            with xnat._http as s:
                 #main upload loop
-                if jsessionid is not None: s.headers.update({"Cookie": f"JSESSIONID={jsessionid}"})
-                else:  s.auth = (username, password)                    
-
                 for item in upload_items:
                     with item.open("rb") as f:
                         is_zip_upload = (tmp_zip is not None and item == tmp_zip)
@@ -146,6 +142,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             if tmp_dir and tmp_dir.exists():
                 try: shutil.rmtree(tmp_dir, ignore_errors=True)
                 except Exception: pass
+            if new_session: xnat.disconnect()
         return 0
         
     else: #download
@@ -154,9 +151,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
     
         tmp_zip_path = Path(tempfile.mkstemp(prefix="xnat_resource_", suffix=".zip")[1])
         try:
-            with requests.Session() as s:
-                if jsessionid is not None: s.headers.update({"Cookie": f"JSESSIONID={jsessionid}"})
-                else:  s.auth = (username, password)
+            with xnat._http as s:
 
                 r = s.get(base_url, params={"format": "zip"}, stream=True)
                 if r.status_code >= 400: 
@@ -191,6 +186,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             if tmp_zip_path.exists():
                 try: tmp_zip_path.unlink()
                 except Exception: pass
+            if new_session: xnat.disconnect()
         return 0
 
 
