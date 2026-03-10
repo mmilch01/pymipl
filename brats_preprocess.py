@@ -48,12 +48,18 @@ def brats_preprocess_pipeline(patient_id: str, modality_folders: dict, output_di
 
     # 3) Skull strip reference using HD-BET
     print('running HD-BET')
-    subprocess.run(
+    res=subprocess.run(
         ["python", "-m", "HD_BET.entry_point", "--save_bet_mask", "-i", nifti_files[ref_mod], "-o", ref_brain_path, '-device', 'cpu'],
         capture_output=True,
         text=True,
-        check=True
-    )
+        check=False
+    )    
+    if res.returncode != 0:
+        print("returncode:", res.returncode)
+        print("stdout:\n", res.stdout)
+        print("stderr:\n", res.stderr)        
+        raise RuntimeError("HD-BET failed")
+    
     ref_mask_path = ref_brain_path.replace(".nii.gz", "_bet.nii.gz")
     os.symlink(os.path.basename(ref_mask_path), os.path.join(os.path.dirname(os.path.abspath(ref_mask_path)),'brain_mask.nii.gz'))
                
