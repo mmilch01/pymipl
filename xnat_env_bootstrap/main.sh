@@ -134,9 +134,9 @@ if [[ -n "$REPO_GIT" ]]; then
 #link main algorithm repo from the downloaded environment
 elif [[ -n "$REPO_ENV_DIR" ]]; then
   repo_in_env="$REPO_ENV_DIR"
-  case "$repo_in_env" in 
-    /*) :;; 
-    *) repo_in_env="$env_repo_prefix/$repo_in_env";; 
+  case "$repo_in_env" in
+    /*) :;;
+    *) repo_in_env="$env_repo_prefix/$repo_in_env";;
   esac
   [[ -d "$repo_in_env" ]] || exit_with_error "-repo_env_dir does not exist after env extraction: $repo_in_env"
   ln -s "$repo_in_env" "$alg_repo_prefix"
@@ -151,7 +151,7 @@ job_sh="$tmpdir/job.sh"
 
 #copy or compile job shell script
 generated=0
-if [ -f "$job_sh_remote" ]; then 
+if [ -f "$job_sh_remote" ]; then
     cp -f "$job_sh_remote" "$job_sh"
     if (( $? )); then exit_with_error "Failed to copy job script: $job_sh_remote"; fi
 
@@ -168,14 +168,14 @@ elif [ -f "$job_yaml_remote" ]; then
     "${cmd[@]}"
     if (( $? )); then exit_with_error "Failed to generate job script from: $job_yaml_remote"; fi
     generated=1
-else 
+else
     #4. If $INPUT directory has no $job.yaml or $job.sh, exit with error
     exit_with_error "Neither job yaml $job_yaml_remote nor bash script $job_sh_remote was found"
 fi
 #5. Execute main.sh. That script would upload outputs back to xnat on its own.
 chmod +x "$job_sh"
 echo "$job_sh"
-"$job_sh" 
+"$job_sh"
 if (( $? )); then exit_with_error "Job script failed: $job_sh"; fi
 
 # There's curretnly a catch: the script would need installed PYMIPL_DIR and pyxnat in the 

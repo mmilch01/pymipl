@@ -124,8 +124,8 @@ cmd=(
     -npp "$nproc"
     -nps "$nproc"
     -device "$device"
-    --disable_progress_bar
 )
+#--disable_progress_bar
 
 printf ' %q' "${cmd[@]}"; printf '\n'
 
