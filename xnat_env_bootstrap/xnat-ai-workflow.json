@@ -52,7 +52,7 @@
       "required": true,
       "replacement-key": "#USER_SRC#",
       "select-values": []
-    },    
+    },
     {
       "name": "PROJECT",
       "type": "string",
