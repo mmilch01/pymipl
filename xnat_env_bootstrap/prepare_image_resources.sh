@@ -2,7 +2,8 @@
 
 if [ -z "$1" ]; then 
     echo "Usage: prepare_image_resources.sh <configuration file>"
-    echo ""
+    echo "Prepares custom resources to bake into the bootstrap image,"
+    echo "including nnUNet models and user environment"
 
     echo "  Configuration file should define the following variables: "
     echo "  UPDATE_MODELS (0 or 1): whether to update models"
@@ -32,7 +33,7 @@ if (( LOAD_ENV == 1 )); then
     source "$config_file"
 
     if [ -z "${SERVER:-}" ] || [ -z "${PROJECT:-}" ] || [ -z "${RESOURCE:-}" ] || [ -z "${ENV_FILE:-}" ]; then
-        echo "Config file must define SERVER, PROJECT, RESOURCE, and ENV_FILE"
+        echo "Config file must define SERVER, PROJECT, DOWNLOAD_ENV_RESOURCE, and ENV_FILE"
         exit 1
     fi
     # ask for user credentials for the specified SERVER
