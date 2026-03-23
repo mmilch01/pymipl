@@ -23,12 +23,14 @@ usage() {
   echo "  experiment        XNAT experiment label"
   echo "  workflow_id  XNAT session resource containing runtime config and, optionally, outputs"
   echo ""
-  echo "required options:"
-  echo "  -microenv <proj_resource>   XNAT project resource file with micromamba env tarball (e.g. ENVS/myenv.tar.gz)"
+  echo "Mounted environment options:"
+  #echo "  -microenv <proj_resource>   XNAT project resource file with micromamba env tarball (e.g. ENVS/myenv.tar.gz)"
+  echo "  -user-env <local_path>      User-supplied micromamba environment path"
+  echo "  -user-src <local_path>      User-supplied source code/binaries path"
   echo ""
-  echo "repo source (exactly one required):"
-  echo "  -repo_git <url@sha>         public git repo URL with commit SHA (required); cloned to /opt/packages/user/alg_repo"
-  echo "  -repo_env_dir <path>        path inside extracted env that contains repo; symlinked to /opt/packages/user/alg_repo"
+#  echo "repo source (exactly one required):"
+#  echo "  -repo_git <url@sha>         public git repo URL with commit SHA (required); cloned to /opt/packages/user/alg_repo"
+#  echo "  -repo_env_dir <path>        path inside extracted env that contains repo; symlinked to /opt/packages/user/alg_repo"
   echo ""
   echo "optional:"
   echo "  -host        <XNAT_HOST>        [default: \$XNAT_HOST]"
@@ -53,7 +55,8 @@ XNAT_USER="${XNAT_USER}"
 XNAT_PASS="${XNAT_PASS}"
 MICROENV_RESOURCE=""
 REPO_GIT=""
-REPO_ENV_DIR=""
+USER_ENV_DIR=""
+USER_SRC_DIR=""
 INPUT_MOUNT="/input"
 PYMIPL_DIR="/opt/packages/pymipl"
 
@@ -63,10 +66,11 @@ while [[ $# -gt 0 ]]; do
     -host) XNAT_HOST="${2}"; shift 2 ;;
     -user) XNAT_USER="${2}"; shift 2 ;;
     -pass) XNAT_PASS="${2}"; shift 2 ;;
-    -microenv) MICROENV_RESOURCE="${2}"; shift 2 ;;
+#    -microenv) MICROENV_RESOURCE="${2}"; shift 2 ;;
     -input_mount) INPUT_MOUNT="${2}"; shift 2 ;;
-    -repo_git) REPO_GIT="${2}"; shift 2 ;;
-    -repo_env_dir) REPO_ENV_DIR="${2}"; shift 2 ;;
+#    -repo_git) REPO_GIT="${2}"; shift 2 ;;
+    -user-env) USER_ENV_DIR="${2}"; shift 2 ;;
+    -user-src) USER_SRC_DIR="$2"; shift 2 ;;
     -pymipl_dir) PYMIPL_DIR="${2}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) exit_with_error "Unknown option: $1" ;;
@@ -76,7 +80,7 @@ done
 if [ "$REPO_GIT" == "NONE" ]; then REPO_GIT=""; fi
 
 # ---- validate required ----
-[[ -n "$MICROENV_RESOURCE" ]] || exit_with_error "Missing required: -microenv"
+#[[ -n "$MICROENV_RESOURCE" ]] || exit_with_error "Missing required: -microenv"
 [[ -n "$XNAT_HOST" && -n "$XNAT_USER" && -n "$XNAT_PASS" ]] || exit_with_error "Missing XNAT credentials"
 
 mkdir -p /workdir
@@ -86,17 +90,17 @@ trap 'rm -rf "$tmpdir"' EXIT
 
 run_python="micromamba run -n base python" 
 
-# Download runtime environment from -microenv and import it into microconda. 
-env_loc="$tmpdir/$MICROENV_RESOURCE"
-cmd=($run_python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
-    --xnat_host "$XNAT_HOST"                \
-    --user "$XNAT_USER"                     \
-    --password "$XNAT_PASS"                 \
-    --level project                         \
-    --project "$PROJECT"                    \
-    --remote_resource "$MICROENV_RESOURCE"  \
-    --local_resource "$env_loc"             \
-    --upload 0)
+# # Download runtime environment from -microenv and import it into microconda. 
+# env_loc="$tmpdir/$MICROENV_RESOURCE"
+# cmd=($run_python "$PYMIPL_DIR"/xnat_workflow/sync-resource-with-xnat.py \
+#     --xnat_host "$XNAT_HOST"                \
+#     --user "$XNAT_USER"                     \
+#     --password "$XNAT_PASS"                 \
+#     --level project                         \
+#     --project "$PROJECT"                    \
+#     --remote_resource "$MICROENV_RESOURCE"  \
+#     --local_resource "$env_loc"             \
+#     --upload 0)
 #TODO DEBUG only
 #echo "${cmd[@]}"
 #"${cmd[@]}"
@@ -107,41 +111,48 @@ mkdir -p /opt/packages/user
 # extract runtime environment to workdir
 #TODO DEBUG ONLY
 env_repo_prefix="/opt/packages/user/env_repo"
+if [ -d "$USER_ENV_DIR" ]; then 
+  rm -rf "$env_repo_prefix"
+  ln -sf "$USER_ENV_DIR" "$env_repo_prefix"
+fi
+
 #mkdir -p "$env_repo_prefix"
 #rm -rf "$env_repo_prefix"/*
 #echo tar -xzf "$env_loc" -C "$env_repo_prefix"
 #tar -xzf "$env_loc" -C "$env_repo_prefix"
 #if (( $? )); then exit_with_error "Failed to extract env tarball: $env_loc"; fi
 
-
 # clone or link the main algorithm repo to standard location.
 alg_repo_prefix="/opt/packages/user/alg_repo"
-rm -rf "$alg_repo_prefix"
-
-repo_sha=""
-if [[ -n "$REPO_GIT" ]]; then
-  #clone main algorithm repo from public git link
-  case "$REPO_GIT" in
-    *@*) repo_url="${REPO_GIT%@*}"; repo_sha="${REPO_GIT#*@}";;
-    *) exit_with_error "-repo_git must be url@sha (SHA required)";;
-  esac  
-  [[ -n "$repo_url" && -n "$repo_sha" && "$repo_sha" != "$repo_url" ]] || exit_with_error "-repo_git must be url@sha (SHA required)"
-  echo git clone "$repo_url" "$alg_repo_prefix"
-  git clone "$repo_url" "$alg_repo_prefix"
-  (cd "$alg_repo_prefix" && git checkout "$repo_sha")
-  if (( $? )); then exit_with_error "git checkout failed: $repo_url:$repo_sha"; fi
-
-#link main algorithm repo from the downloaded environment
-elif [[ -n "$REPO_ENV_DIR" ]]; then
-  repo_in_env="$REPO_ENV_DIR"
-  case "$repo_in_env" in
-    /*) :;;
-    *) repo_in_env="$env_repo_prefix/$repo_in_env";;
-  esac
-  [[ -d "$repo_in_env" ]] || exit_with_error "-repo_env_dir does not exist after env extraction: $repo_in_env"
-  ln -s "$repo_in_env" "$alg_repo_prefix"
-  if (( $? )); then exit_with_error "Failed to link repo: $repo_in_env -> $alg_repo_prefix"; fi
+if [ -d "$USER_SRC_DIR" ]; then 
+  rm -rf "$alg_repo_prefix"
+  ln -sf "$USER_SRC_DIR" "$alg_repo_prefix"
 fi
+
+# repo_sha=""
+# if [[ -n "$REPO_GIT" ]]; then
+#   #clone main algorithm repo from public git link
+#   case "$REPO_GIT" in
+#     *@*) repo_url="${REPO_GIT%@*}"; repo_sha="${REPO_GIT#*@}";;
+#     *) exit_with_error "-repo_git must be url@sha (SHA required)";;
+#   esac  
+#   [[ -n "$repo_url" && -n "$repo_sha" && "$repo_sha" != "$repo_url" ]] || exit_with_error "-repo_git must be url@sha (SHA required)"
+#   echo git clone "$repo_url" "$alg_repo_prefix"
+#   git clone "$repo_url" "$alg_repo_prefix"
+#   (cd "$alg_repo_prefix" && git checkout "$repo_sha")
+#   if (( $? )); then exit_with_error "git checkout failed: $repo_url:$repo_sha"; fi
+
+# #link main algorithm repo from the downloaded environment
+# elif [[ -n "$USER_ENV_DIR" ]]; then
+#   repo_in_env="$USER_ENV_DIR"
+#   case "$repo_in_env" in
+#     /*) :;;
+#     *) repo_in_env="$env_repo_prefix/$repo_in_env";;
+#   esac
+#   [[ -d "$repo_in_env" ]] || exit_with_error "-repo_env_dir does not exist after env extraction: $repo_in_env"
+#   ln -s "$repo_in_env" "$alg_repo_prefix"
+#   if (( $? )); then exit_with_error "Failed to link repo: $repo_in_env -> $alg_repo_prefix"; fi
+# fi
 
 resource_loc="$INPUT_MOUNT/RESOURCES/$WORKFLOW_ID"
 job_sh_remote="$resource_loc/job.sh"
@@ -172,6 +183,7 @@ else
     #4. If $INPUT directory has no $job.yaml or $job.sh, exit with error
     exit_with_error "Neither job yaml $job_yaml_remote nor bash script $job_sh_remote was found"
 fi
+
 #5. Execute main.sh. That script would upload outputs back to xnat on its own.
 chmod +x "$job_sh"
 echo "$job_sh"
@@ -198,8 +210,9 @@ cp -f "$job_sh" "$job_log_dir/job.sh"
   echo "WORKFLOW_ID=$WORKFLOW_ID"
   echo "MICROENV_RESOURCE=$MICROENV_RESOURCE"
   echo "REPO_GIT=$REPO_GIT"
-  echo "REPO_ENV_DIR=$REPO_ENV_DIR"
-  echo "repo_sha=$repo_sha"
+  echo "USER_ENV_DIR=$USER_ENV_DIR"
+  echo "USER_SRC_DIR=$USER_SRC_DIR"
+  #echo "repo_sha=$repo_sha"
   echo "INPUT_MOUNT=$INPUT_MOUNT"
   echo "PYMIPL_DIR=$PYMIPL_DIR"
   echo "XNAT_HOST=$XNAT_HOST"
