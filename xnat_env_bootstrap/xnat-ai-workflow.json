@@ -2,15 +2,25 @@
   "name": "xnat-ai-workflow",
   "label": "XNAT AI Workflow",
   "description": "Runs /opt/entrypoint/main.sh at session level; mounts session directory at /input.",
-  "version": "0.01",
+  "version": "0.03",
   "image": "mmilch01/xnat-ai-workflow:latest",
   "type": "docker",
-  "command-line": "/opt/entrypoint/main.sh #PROJECT# #SUBJECT# #EXPERIMENT# #WORKFLOW_ID# -microenv #MICROENV# -repo_git #REPO_GIT#",
+  "command-line": "/opt/entrypoint/main.sh #PROJECT# #SUBJECT# #EXPERIMENT# #WORKFLOW_ID# -user-env /ENVS/#USER_ENV# -user-src /SRC/#USER_SRC#",
   "mounts": [
     {
       "name": "input",
       "writable": false,
       "path": "/input"
+    },
+    {
+      "name": "envs",
+      "writable": false,
+      "path": "/ENVS"
+    },
+    {
+      "name": "src",
+      "writable": false,
+      "path": "/SRC"
     }
   ],
   "environment-variables": {},
@@ -26,23 +36,23 @@
       "select-values": []
     },
     {
-      "name": "microenv",
-      "description": "XNAT project resource path to micromamba env tarball (e.g. ENVS/myenv.tar.gz).",
+      "name": "user_env",
+      "description": "User-supplied runtime micromamba environment directory",
       "type": "string",
       "default-value": "NONE",
       "required": true,
-      "replacement-key": "#MICROENV#",
+      "replacement-key": "#USER_ENV#",
       "select-values": []
     },
     {
-      "name": "repo_git",
-      "description": "Optional: public git repo URL and commit SHA as url@sha.",
+      "name": "user_src",
+      "description": "User-supplied source directory",
       "type": "string",
       "default-value": "NONE",
       "required": true,
-      "replacement-key": "#REPO_GIT#",
+      "replacement-key": "#USER_SRC#",
       "select-values": []
-    },
+    },    
     {
       "name": "PROJECT",
       "type": "string",
@@ -65,7 +75,7 @@
   "outputs": [],
   "xnat": [
     {
-      "name": "session-level",
+      "name": "xnat-ai-workflow",
       "label": "XNAT AI workflow",
       "description": "XNAT AI workflow",
       "contexts": [
@@ -92,6 +102,24 @@
           "derived-from-wrapper-input": "session",
           "derived-from-xnat-object-property": "project-id",
           "multiple": false
+        },
+        {
+          "name": "envs-derived-input",
+          "description": "ENVS resources on project",
+          "type": "Resource",
+          "derived-from-wrapper-input": "project-id",
+          "provides-files-for-command-mount": "envs",
+          "matcher": "@.label == 'ENVS'",
+          "required": true
+        },
+        {
+          "name": "src-derived-input",
+          "description": "SRC resources on project",
+          "type": "Resource",
+          "derived-from-wrapper-input": "project-id",
+          "provides-files-for-command-mount": "src",
+          "matcher": "@.label == 'SRC'",
+          "required": true
         },
         {
           "name": "subject-label",
@@ -121,6 +149,7 @@
   ],
   "reserve-memory": 16384,
   "limit-cpu": 8,
+  "shm-size": 2147483648,
   "container-labels": {},
   "generic-resources": {},
   "ulimits": {},

@@ -78,6 +78,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "$REPO_GIT" == "NONE" ]; then REPO_GIT=""; fi
+if [ "$USER_ENV_DIR" == "NONE" ]; then USER_ENV_DIR=""; fi
+if [ "$USER_SRC_DIR" == "NONE" ]; then USER_SRC_DIR=""; fi
 
 # ---- validate required ----
 #[[ -n "$MICROENV_RESOURCE" ]] || exit_with_error "Missing required: -microenv"
