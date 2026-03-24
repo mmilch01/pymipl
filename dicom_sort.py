@@ -105,33 +105,36 @@ def reindex_to_structurals_and_segs(d, save_to_file=None):
         for subd1 in exp['children']:
             if Path(subd1['path']).stem == 'SCANS': 
                 for scan in subd1['children']:
-                    try:
-                        file_entry=scan['children'][0]['children'][0]
-                        sopclass = file_entry['SOPClass']
-                        uid=None
-                        
-                        if sopclass in ['CTImageStorage','MRImageStorage']:
-                            uid=file_entry['SeriesInstanceUID']
-                            if uid not in struct_scans:
-                                struct_scans[uid]={'structural':None, 'segmentations': []}
-                            else:
-                                struct_scans[uid]['structural']=file_entry                                
-                                
-                        elif sopclass in ['RTStruct','Seg']:
-                            uid=file_entry['ReferencedSeriesInstanceUID']
-                            if uid not in struct_scans:
-                                struct_scans[uid]={'structural':None,'segmentations':[]}
-                            struct_scans[uid]['segmentations']+=[file_entry]
+                    for scan_resource in scan['children']:
+                        try:                     
+                            #if Path(scan_resource['path']).name.lower() != 'dicom': continue
+                            if len(scan_resource['children']) < 1: continue
+                            file_entry=scan_resource['children'][0]
+                            sopclass = file_entry['SOPClass']
+                            uid=None
                             
-                        if uid is not None:
-                            subject=get_subject(file_entry)                      
-                            if subject not in subjects:
-                                subjects[subject]={'id':subject,'struct_uids':{}}
-                            if uid not in subjects[subject]['struct_uids']:
-                                subjects[subject]['struct_uids'][uid]={}
-                    except Exception as e:
-                        print (f'WARNING: skipping scan {file_entry}: {e}')
-                        continue
+                            if sopclass in ['CTImageStorage','MRImageStorage']:
+                                uid=file_entry['SeriesInstanceUID']
+                                if uid not in struct_scans:
+                                    struct_scans[uid]={'structural':file_entry, 'segmentations': []}
+                                else:
+                                    struct_scans[uid]['structural']=file_entry                                
+                                    
+                            elif sopclass in ['RTStruct','Seg']:
+                                uid=file_entry['ReferencedSeriesInstanceUID']
+                                if uid not in struct_scans:
+                                    struct_scans[uid]={'structural':None,'segmentations':[]}
+                                struct_scans[uid]['segmentations']+=[file_entry]
+                                
+                            if uid is not None:
+                                subject=get_subject(file_entry)                      
+                                if subject not in subjects:
+                                    subjects[subject]={'id':subject,'struct_uids':{}}
+                                if uid not in subjects[subject]['struct_uids']:
+                                    subjects[subject]['struct_uids'][uid]={}
+                        except Exception as e:
+                            print (f'WARNING: skipping scan {file_entry}: {e}')
+                            continue
                         
     #pass 2, link subjects and structural scans.
     for uid, entry in struct_scans.items():
