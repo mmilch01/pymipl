@@ -50,7 +50,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                     logging.error(f"Subject {subj} does not exist")
                     return 1
                 subj_obj.create()
-                logging.info(f"Created subject '{subj}'")
+                logging.debug(f"Created subject '{subj}'")
 
         if level_ord >= levels['experiment']:
             exp_obj = subj_obj.experiment(exp); params['EXPT_LABEL'] = exp
@@ -58,7 +58,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 if not upload or not create_hierarchy: 
                     logging.error(f"Experiment '{exp}' does not exist")
                     return 2
-                exp_obj.create(); logging.info(f"Created experiment '{exp}'")
+                exp_obj.create(); logging.debug(f"Created experiment '{exp}'")
 
         if level_ord >= levels['scan']:
             scan_obj = exp_obj.scan(scan_id)
@@ -66,17 +66,17 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 if not upload or not create_hierarchy: 
                     logging.error(f"Scan {scan_id} does not exist under experiment {exp}")
                     return 3
-                scan_obj.create(); logging.info(f"Created scan '{scan_id}'")
+                scan_obj.create(); logging.debug(f"Created scan '{scan_id}'")
     
         if level == "project": 
             res_obj = project.resource(resource_name)            
             rlist=project.resources().get()
-            logging.info(f"Level project, resources:{rlist}")
+            logging.debug(f"Level project, resources:{rlist}")
             with xnat._http as s:
                     url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/resources?format=json"
                     r = s.get(url)
-                    logging.info(f"GET {url} -> {r.status_code}")
-                    logging.info(r.text[:2000])
+                    logging.debug(f"GET {url} -> {r.status_code}")
+                    logging.debug(r.text[:2000])
 
         
         elif level == "subject": res_obj = subj_obj.resource(resource_name)
@@ -111,7 +111,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             upload_items = []
             if src.is_file(): upload_items = [src]
             else:
-                logging.info(f"archiving directory {src} for upload")
+                logging.debug(f"archiving directory {src} for upload")
                 tmp_dir = Path(tempfile.mkdtemp(prefix="xnat_upload_"))
                 tmp_zip_base = tmp_dir / "upload"
                 tmp_zip = tmp_zip_base.with_suffix(".zip")
@@ -131,9 +131,9 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                             headers = {"Content-Type": "application/zip"}
                         else: 
                             headers = {"Content-Type": "application/octet-stream"}
-                        logging.info(f"uploading to {base_url}/{item.name}")
+                        logging.debug(f"uploading to {base_url}/{item.name}")
                         r = s.put(f"{base_url}/{item.name}", params=params, data=f, headers=headers)
-                        logging.info(f"Resource upload OK: {r.status_code} {base_url}")
+                        logging.debug(f"Resource upload OK: {r.status_code} {base_url}")
                         if r.status_code >= 400: logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]}"); return 2
                 return 0                            
         except Exception as e:
@@ -141,7 +141,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             logging.error(e)
             return 7
         finally:
-            logging.info("Cleaning up")
+            logging.debug("Cleaning up")
             if tmp_zip and tmp_zip.exists():
                 try: tmp_zip.unlink()
                 except Exception: pass
@@ -158,7 +158,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
         tmp_zip_path = Path(tempfile.mkstemp(prefix="xnat_resource_", suffix=".zip")[1])
         try:
             with xnat._http as s:
-                logging.info(f"Downloading {base_url}")
+                logging.debug(f"Downloading {base_url}")
                 r = s.get(base_url, params={"format": "zip"}, stream=True)
                 if r.status_code >= 400: 
                     logging.error(f"Download failed: {r.status_code} {base_url} {r.text[:1000]}")
@@ -176,20 +176,20 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 if wants_dir:
                     dst.mkdir(parents=True, exist_ok=True)
                     z.extractall(dst)
-                    logging.info(f"Downloaded resource '{resource_name}' to directory {dst}")
+                    logging.debug(f"Downloaded resource '{resource_name}' to directory {dst}")
                     return 0
     
                 if len(members) != 1: logging.error(f"Resource '{resource_name}' has {len(members)} files; local_resource is a file path"); return 2
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 with z.open(members[0], "r") as fi, dst.open("wb") as fo: shutil.copyfileobj(fi, fo)
-                logging.info(f"Downloaded resource '{resource_name}' single file to {dst}")
+                logging.debug(f"Downloaded resource '{resource_name}' single file to {dst}")
                 return 0
     
         except Exception as e:
             logging.error(e)
             return 10
         finally:
-            logging.info("Cleaning up")
+            logging.debug("Cleaning up")
             if tmp_zip_path.exists():
                 try: tmp_zip_path.unlink()
                 except Exception: pass

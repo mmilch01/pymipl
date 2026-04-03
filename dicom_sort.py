@@ -1,4 +1,4 @@
-import os, argparse, json
+import os, argparse, json, csv
 from pathlib import Path
 import pydicom
 
@@ -90,8 +90,102 @@ def get_subject(file_entry):
     '''
     return file_entry['PatName']
     
+def save_scanlist(subjects,csv_file):
+    """
+    Save structural scans and their derived segmentations to CSV.
 
-def reindex_to_structurals_and_segs(d, save_to_file=None):
+    One row per structural scan.
+
+    Segmentation columns are assigned globally by exact
+    (SeriesDescription, SOPClass) match:
+      SegScan1, SegScan1_SeriesDescription, SegScan1_SOPClass, ...
+    """
+    
+    # Global segmentation slot registry:
+    #   (SeriesDescription, SOPClass) -> slot number
+    rows = []
+    seg_scans = {}
+    n_seg = 0
+    
+    for subject_id, subject_data in subjects.items():
+        xnat_subject = subject_data.get("id", subject_id)
+
+        for struct_uid, struct_entry in subject_data.get("struct_uids", {}).items():
+            structural = struct_entry.get("structural", {}) or {}
+            segs = struct_entry.get("segmentations", []) or []
+
+            struct_path = structural.get("path", "") or ""
+            struct_series_desc = structural.get("SeriesDescription", "")
+            struct_series_desc = "" if struct_series_desc is None else struct_series_desc
+
+            # Experiment = first path component
+            path_parts = struct_path.split("/")
+            xnat_experiment = path_parts[0] if path_parts else ""
+
+            # Structural scan number = token after /SCANS/
+            struct_scan = ""
+            if "/SCANS/" in struct_path:
+                after_scans = struct_path.split("/SCANS/", 1)[1]
+                struct_scan = after_scans.split("/", 1)[0]
+
+            row = {
+                "Subject": xnat_subject,
+                "Experiment": xnat_experiment,
+                "StructScan": struct_scan,
+                "StructScanSerDesc": struct_series_desc,
+            }
+
+            for seg in segs:
+                sop_class = seg.get("SOPClass", "")
+                #if sop_class not in ("RTStruct", "Seg"): continue
+
+                seg_path = seg.get("path", "") or ""
+                seg_series_desc = seg.get("SeriesDescription", "")
+                seg_series_desc = "" if seg_series_desc is None else seg_series_desc
+
+                seg_scan = ""
+                if "/SCANS/" in seg_path:
+                    after_scans = seg_path.split("/SCANS/", 1)[1]
+                    seg_scan = after_scans.split("/", 1)[0]
+
+                seg_key = (seg_series_desc, sop_class)
+
+                if seg_key in seg_scans:
+                    seg_num = seg_scans[seg_key]
+                else:
+                    n_seg += 1
+                    seg_num = n_seg
+                    seg_scans[seg_key] = seg_num
+
+                row[f"SegScan{seg_num}"] = seg_scan
+                row[f"SegScan{seg_num}_SerDesc"] = seg_series_desc
+                row[f"SegScan{seg_num}_SOPClass"] = sop_class
+
+            rows.append(row)
+
+    fieldnames = [
+        "Subject",
+        "Experiment",
+        "StructScan",
+        "StructScanSerDesc",
+    ]
+
+    for i in range(1, n_seg + 1):
+        fieldnames.extend([
+            f"SegScan{i}",
+            f"SegScan{i}_SerDesc",
+            f"SegScan{i}_SOPClass",
+        ])
+
+    with open(csv_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+            
+    return rows
+
+def reindex_to_structurals_and_segs(d, save_to_file=None,csv_file=None):
     '''
     reindex analyzed dir to structurals and corresponding segmentations.
     '''
@@ -142,11 +236,13 @@ def reindex_to_structurals_and_segs(d, save_to_file=None):
             subj_uid_dict=subj_info['struct_uids']
             if uid in subj_uid_dict:
                 subj_uid_dict[uid]=struct_scans[uid]
-                
+    rows=None        
     if save_to_file:
         with open(save_to_file,'w') as txt:
             json.dump(subjects,txt,indent=2)
-    return subjects
+    if csv_file:
+        rows=save_scanlist(subjects,csv_file)
+    return subjects, rows
 '''
 parses a directory with project data containing structural DICOM's, DICOMRTs and DICOMSeg's. 
 '''
