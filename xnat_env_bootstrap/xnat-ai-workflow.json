@@ -36,24 +36,6 @@
       "select-values": []
     },
     {
-      "name": "user_env",
-      "description": "User-supplied runtime micromamba environment directory",
-      "type": "string",
-      "default-value": "NONE",
-      "required": true,
-      "replacement-key": "#USER_ENV#",
-      "select-values": []
-    },
-    {
-      "name": "user_src",
-      "description": "User-supplied source directory",
-      "type": "string",
-      "default-value": "NONE",
-      "required": true,
-      "replacement-key": "#USER_SRC#",
-      "select-values": []
-    },
-    {
       "name": "PROJECT",
       "type": "string",
       "required": true,
@@ -69,6 +51,24 @@
       "name": "EXPERIMENT",
       "type": "string",
       "required": true,
+      "select-values": []
+    },
+    {
+      "name": "user_env",
+      "description": "User-supplied runtime micromamba environment directory",
+      "type": "string",
+      "default-value": "NONE",
+      "required": true,
+      "replacement-key": "#USER_ENV#",
+      "select-values": []
+    },
+    {
+      "name": "user_src",
+      "description": "User-supplied source directory",
+      "type": "string",
+      "default-value": "NONE",
+      "required": true,
+      "replacement-key": "#USER_SRC#",
       "select-values": []
     }
   ],
@@ -91,7 +91,16 @@
           "load-children": false
         }
       ],
-      "derived-inputs": [
+      "derived-inputs": [      
+        {
+          "name": "project",
+          "type": "Project",
+          "required": true,
+          "user-settable": false,
+          "load-children": false,
+          "derived-from-wrapper-input": "session",
+          "multiple": false
+        },      
         {
           "name": "project-id",
           "description": "Project id",
@@ -102,24 +111,6 @@
           "derived-from-wrapper-input": "session",
           "derived-from-xnat-object-property": "project-id",
           "multiple": false
-        },
-        {
-          "name": "envs-derived-input",
-          "description": "ENVS resources on project",
-          "type": "Resource",
-          "derived-from-wrapper-input": "project-id",
-          "provides-files-for-command-mount": "envs",
-          "matcher": "@.label == 'ENVS'",
-          "required": true
-        },
-        {
-          "name": "src-derived-input",
-          "description": "SRC resources on project",
-          "type": "Resource",
-          "derived-from-wrapper-input": "project-id",
-          "provides-files-for-command-mount": "src",
-          "matcher": "@.label == 'SRC'",
-          "required": true
         },
         {
           "name": "subject-label",
@@ -141,6 +132,28 @@
           "load-children": true,
           "derived-from-wrapper-input": "session",
           "derived-from-xnat-object-property": "label",
+          "multiple": false
+        },
+        {
+          "name": "envs-derived-input",
+          "description": "ENVS resources on project",
+          "type": "Resource",
+          "matcher": "@.label == 'ENVS'",
+          "required": true,
+          "provides-files-for-command-mount": "envs",
+          "load-children": true,
+          "derived-from-wrapper-input": "project",
+          "multiple": false
+        },
+        {
+          "name": "src-derived-input",
+          "description": "SRC resources on project",
+          "type": "Resource",
+          "matcher": "@.label == 'SRC'",
+          "required": true,
+          "provides-files-for-command-mount": "src",
+          "load-children": true,
+          "derived-from-wrapper-input": "project",
           "multiple": false
         }
       ],

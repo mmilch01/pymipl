@@ -42,16 +42,25 @@ uploader="$script_dir/sync-resource-with-xnat.py"
 (( UPLOAD_ENV == 1 || UPLOAD_USER_SOURCE == 1 )) || exit_with_error "Nothing to do: both UPLOAD_ENV and UPLOAD_USER_SOURCE are disabled"
 
 #1. User environment.
+if (( UPLOAD_ENV == 1 )) && [ ! -d "${LOCAL_ENV_FOLDER}" ]; then
+    exit_with_error "LOCAL_ENV_FOLDER must be defined in config file with UPLOAD_ENV=1"
+fi
+
+if (( UPLOAD_USER_SOURCE == 1 )) && [ ! -d "${LOCAL_USER_SOURCE_FOLDER}" ]; then 
+    exit_with_error "Folder in LOCAL_USER_SOURCE_FOLDER} $LOCAL_USER_SOURCE_FOLDER} does not exist"
+fi
+
+#credentials
+read -r -p "user:" XNAT_USER
+read -r -s -p "password:" XNAT_PASS
+
 if (( UPLOAD_ENV == 1 )); then
-    [[ "${LOCAL_ENV_FOLDER:-}" != "" ]] || exit_with_error "LOCAL_ENV_FOLDER must be defined in config file with UPLOAD_ENV=1"
+    #record local prefix to environment folder
+    pushd "${LOCAL_ENV_FOLDER}" &> /dev/null
+    echo $(pwd) > install_prefix.txt
+    popd &> /dev/null
 
     remote_env_resource="${REMOTE_ENV_RESOURCE:-ENVS}"
-    [ -d "$LOCAL_ENV_FOLDER" ] || exit_with_error "Folder in LOCAL_ENV_FOLDER $LOCAL_ENV_FOLDER does not exist"
-
-    #credentials
-    read -r -p "user:" XNAT_USER
-    read -r -s -p "password:" XNAT_PASS
-
     python3 "$uploader" \
         --level project \
         --project "$PROJECT" \
@@ -67,12 +76,6 @@ fi
 
 #2 User (re)sources folder
 if (( UPLOAD_USER_SOURCE == 1 )); then
-    [[ -d "${LOCAL_USER_SOURCE_FOLDER:-}" ]] || exit_with_error "LOCAL_USER_SOURCE_FOLDER must point to existing folder when UPLOAD_USER_SOURCE=1"
-
-    #credentials
-    read -r -p "user:" XNAT_USER
-    read -r -s -p "password:" XNAT_PASS
-
     remote_user_source_resource="${REMOTE_USER_SOURCE_RESOURCE:-SRC}"
     python3 "$uploader" \
         --level project \
