@@ -9,9 +9,80 @@ import tempfile
 import zipfile
 import os 
 
+# XNAT-Jupyter workflow helper functions
+import pyxnat
+import json
+import requests
+import datetime
+import yaml
+
+def set_logger():
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
+
+#helper functions
+def paths_to_str(x):
+    if isinstance(x, Path): return str(x)
+    if isinstance(x, dict): return {k: paths_to_str(v) for k, v in x.items()}
+    if isinstance(x, list): return [paths_to_str(v) for v in x]
+    return x
+
+def resource_to_xnat(local_resource, xnat_scan_resource, xnat_project, xnat_subject, xnat_experiment, xnat_interface):
+    return sync_resource_xnat(local_resource, xnat_scan_resource, xnat_project, xnat_subject, xnat_experiment, \
+        level="experiment", create_hierarchy=True,xnat_interface=xnat_interface)
+
+def get_xnat_interface(project):
+    host,user,passw,=os.environ.get('XNAT_HOST'),os.environ.get('XNAT_USER'),os.environ.get('XNAT_PASS')
+    xnat = pyxnat.Interface(server=host, user=user, password=passw)
+    xnat.select.project(project)
+    return xnat
+
+def launch_cs_command(xnat_interface,project,subject,experiment,session,workflow_id,xnat_command_id,xnat_wrapper_name,verbose=False):
+    host=os.environ.get('XNAT_HOST')
+    url = f"{host}/xapi/projects/{project}/commands/{xnat_command_id}/wrappers/{xnat_wrapper_name}/launch"
+    try:
+        body = {
+            "PROJECT": project,
+            "SUBJECT": subject,
+            "EXPERIMENT": experiment,
+            "WORKFLOW_ID": workflow_id,
+            "MICROENV": "NONE",
+            "REPO_GIT": "NONE", 
+            "session": session            
+        }
+        resp = xnat_interface._http.post(url, json=body)
+        if verbose:
+            print("Request body: ", body)
+            print("Request url: ", url)
+            print("Status:", resp.status_code)
+            print("Reason:", resp.reason)
+            print("URL:", resp.url)
+            print("Headers:\n", resp.headers)
+            print("Cookies:\n", resp.cookies)
+            print("Elapsed:", resp.elapsed)
+            print("Text:\n", resp.text)
+        return resp.status_code in (200, 201, 202)
+    except Exception as e:
+        print(e)
+        return False
+
+
 def sync_resource_xnat(local_resource, resource_name, project, subject=None, 
        experiment=None, scan=None, upload=True, level="scan", XNAT_HOST=None, 
        username=None, password=None, xnat_interface=None, create_hierarchy=False, debug=False,include_dir_under_resource=False):
+    '''
+    Synchronizes a local file or directory with an XNAT resource at project, subject, experiment, or scan level.
+    Supports both upload and download modes, with optional automatic creation of missing hierarchy elements. 
+    Handles authentication via provided credentials or existing pyxnat Interface. 
+    For uploads, directories are archived to ZIP (optionally preserving top-level folder) and extracted server-side. 
+    For downloads, resources are retrieved as ZIP and extracted locally, with support for single-file or directory targets.     
+    '''
 
     if XNAT_HOST is None: XNAT_HOST = os.environ.get("XNAT_HOST")
     if not XNAT_HOST: logging.error("Missing XNAT_HOST"); return 2
@@ -207,7 +278,22 @@ def init_global_vars_bootstrap_image(global_vars,xnat_project):
 
 def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=None):
     '''
-    cmd must be single command with no |, >, &&, ;, variables, command substitutions, etc.
+    Generates an executable bash batch script from a workflow YAML definition.
+    Merges job-level variables with provided globals and formats all placeholders.
+    
+    Writes script incrementally, adding shebang only if file does not exist.
+    Prints job and step titles as annotated echo statements for traceability.
+    
+    For each step, resolves parameters and renders a single safe command.
+    Wraps execution with error checks and exits on failure with message.
+    
+    Builds XNAT upload commands for specified files and directories per step.
+    Validates existence (and non-empty dirs) before invoking upload helper.
+    
+    Uses positional arguments (project, subject, experiment, optional scan).
+    Assumes target environment (e.g., pymipl) is already active at runtime.
+    
+    Ensures output directory exists and marks script as executable.    
     '''
         
     d = yaml.safe_load(job_yaml) if isinstance(job_yaml, str) else dict(job_yaml)
@@ -274,3 +360,4 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
 
         #f.write(f'echo "############ END JOB: {title}"\n')
     out.chmod(0o755)
+
