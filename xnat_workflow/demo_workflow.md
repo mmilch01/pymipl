@@ -20,7 +20,7 @@ Then (optionally) clone repository to this dir:
 git clone https://github.com/JoHof/lungmask.git
 ```
 
-The repository is saved under ./lungmask dir. Now we need to create the matching python environment, and install the user package.
+The repository is saved under ./lungmask dir. Now we need to create the python environment, and install the user package.
 ```
 #Create the environment (few seconds)
 micromamba create -p ./lungmask-env python=3.12.3
@@ -45,9 +45,10 @@ cp $PYMIPL_DIR/xnat_env_bootstrap/example-custom-image.conf lungmask-image.conf
 gedit lungmask-image.conf
 ```
 
-If using docker.io, the only part we need to set is the local environment location:
+We will use docker.io to store Docker images. We also need to set image name and local micromamba environment folder:
 ```
-REMOTE_IMAGE=mmilch01/xnat-lungmask:latest
+DOCKER_REPO="docker.io"
+REMOTE_IMAGE="mmilch01/xnat-lungmask:latest"
 LOCAL_ENV_FOLDER="/home/mmilchenko/src/adapt_demo/lungmask-env"
 ```
 
