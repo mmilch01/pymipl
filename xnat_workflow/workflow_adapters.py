@@ -16,6 +16,18 @@ import requests
 import datetime
 import yaml
 
+#fills the 'job' dict with the values from the data_list csv. 
+def populate_job_fields(env_type,global_vars,data_dict):    
+    job={'steps': []}
+    for key,val in data_dict.items(): job[key]=val
+    return job
+
+def add_job_step(job,step_command,step_title=None):
+    step={ 'step_command': step_command }
+    if step_title is not None:
+        step['step_title']=step_title
+
+
 def set_logger():
     root = logging.getLogger()
     root.setLevel(logging.INFO)
@@ -267,6 +279,95 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             if new_session: xnat.disconnect()
         return 0
 
+##########################################################################################
+# g_user_env_repo: the folder name stem of the user-supplied micromamba environment repository 
+# stored as subfolder in the project 'ENVS' resource. Currently not supported due to XNAT limitations.
+# if this is set to 'NONE', in container mode an environment built into Docker image (if any) will be used, 
+# from the default location /opt/packages/user/user_env. 
+
+##########################################################################################
+# g_env_repo_dir: actual location of the the user-supplied micromamba environment repository. 
+# 'jupyter' mode: if g_user_env_repo is set, this is set to 
+# /data/projects/<PROJECT>/RESOURCES/ENVS/<g_user_env_repo>
+# if g_user_env_repo='NONE', this can be set manually to point to the local environment repo.
+# 'container' mode: default to '/opt/packages/user/user_env'. If g_user_env_repo is set, this location 
+# is mounted from /data/projects/<PROJECT>/RESOURCES/ENVS/<g_user_env_repo>
+
+##########################################################################################
+# g_user_src_repo: folder name stem of the user source code/resources that will be used by the 
+# workflow, stored as subfolder in the project 'SRC' resource.
+# This can be 'NONE', then no resources directory will be available during runtime.
+
+##########################################################################################
+# g_alg_repo_dir: the actual location of the user source code/resources dir. 
+# In 'jupyter' mode, default to '/data/projects/<PROJECT>/RESOURCES/SRC/<g_user_src_repo>'.
+# Can be overridden if that repo does not exist.
+# In 'container' mode, default to '/opt/packages/user/alg_repo'
+
+##########################################################################################
+# g_input_mount_path: the input folder with the list of input project experiments, 
+# mounted from the XNAT archive.
+# for 'jupyter', default to '/data/project/<project>/experiments'
+# for 'container', default to '/input
+
+##########################################################################################
+# g_local_workdir_path: local workdir where configuration files, logs, scripts, 
+# and outputs will be written. 
+# in 'jupyter' mode, this should point to a local writable dir.
+# in 'container' mode, default to '/workdir'
+
+#########################################################################################
+# g_pymipl_dir: local directory with XNAT workflow generator scripts.
+# 'jupyter' mode: any local dir where 'pymipl' library is cloned
+# 'container' mode: auto-set to /opt/packages/pymipl
+
+def init_global_vars(env_type, project, workflow_id, 
+                     g_user_env_repo='NONE',
+                     g_env_repo_dir=None,
+                     g_user_src_repo='NONE',
+                     g_alg_repo_dir=None,
+                     g_input_mount_path=None,
+                     g_local_workdir_path=None,
+                     g_pymipl_dir=None):
+    gv={'g_project': project,'g_workflow_id': workflow_id}
+    if env_type.lower()=='jupyter':
+        gv['g_user_env_repo']=g_user_env_repo        
+        if g_env_repo_dir is not None: 
+            gv['g_env_repo_dir']=g_env_repo_dir
+        elif g_user_env_repo != 'NONE':
+            gv['g_env_repo_dir']=Path('/data/projects') / project /'RESOURCES/ENVS' / g_user_env_repo
+        else:
+            gv['g_env_repo_dir']='NONE'
+        gv['g_user_src_repo']=g_user_src_repo
+        if g_alg_repo_dir is not None: 
+            gv['g_alg_repo_dir']=g_alg_repo_dir
+        elif g_user_src_repo != 'NONE':
+            gv['g_alg_repo_dir']=Path('/data/projects') / project /'RESOURCES/SRC' / g_user_src_repo
+        else:
+            gv['g_alg_repo_dir']='NONE'        
+        gv['g_input_mount_path']= (
+            g_input_mount_path if g_input_mount_path is not None
+            else Path('/data/project') / project / 'experiments'
+        )
+        if g_local_workdir_path is not None: 
+            gv['g_local_workdir_path']=g_local_workdir_path 
+        else:
+            raise ValueError('g_local_workdir_path cannot be empty if env_type=jupyter')
+        if g_pymipl_dir is not None: 
+            gv['g_pymipl_dir']=g_pymipl_dir
+        else:
+            raise ValueError('g_pymipl_dir_path cannot be empty if env_type=jupyter')                                    
+    elif env_type.lower()=='container':
+        gv['g_user_env_repo']=g_user_env_repo        
+        gv['g_env_repo_dir']=Path('/opt/packages/user/env_repo')
+        gv['g_user_src_repo']=g_user_src_repo
+        gv['g_alg_repo_dir']=Path('/opt/packages/user/alg_repo')
+        gv['g_input_mount_path']=Path('/input')
+        gv['g_local_workdir_path']=Path('/workdir')
+        gv['g_pymipl_dir']=Path('/opt/packages/pymipl')
+    else:
+        raise ValueError(f'Unknown environment type: {env_type}, expected jupyter or container')    
+    return gv
 
 def init_global_vars_bootstrap_image(global_vars,xnat_project):
     global_vars['g_input_mount_path']=Path('/input')
