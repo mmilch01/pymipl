@@ -240,7 +240,8 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
 
             with xnat._http as s:
                 #main upload loop
-                for item in upload_items:
+                #logging.info(f'upload_items:{upload_items}')
+                for item in upload_items:                    
                     with item.open("rb") as f:
                         is_zip_upload = (tmp_zip is not None and item == tmp_zip)
                         if is_zip_upload: 
@@ -252,7 +253,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                         r = s.put(f"{base_url}/{item.name}", params=params, data=f, headers=headers)
                         logging.debug(f"Resource upload OK: {r.status_code} {base_url}")
                         if r.status_code >= 400: logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]}"); return 2
-                logging.info('Upload successful')
+                #logging.info('Upload successful 1')
                 return 0                            
         except Exception as e:
             print(e)
@@ -267,7 +268,6 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 try: shutil.rmtree(tmp_dir, ignore_errors=True)
                 except Exception: pass
             if new_session: xnat.disconnect()
-        logging.info('Upload successful')
         return 0
         
     else: #download
@@ -296,14 +296,14 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                     dst.mkdir(parents=True, exist_ok=True)
                     z.extractall(dst)
                     logging.debug(f"Downloaded resource '{resource_name}' to directory {dst}")
-                    logging.info('Download successful')
+                    #logging.info('Download successful 2')
                     return 0
     
                 if len(members) != 1: logging.error(f"Resource '{resource_name}' has {len(members)} files; local_resource is a file path"); return 2
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 with z.open(members[0], "r") as fi, dst.open("wb") as fo: shutil.copyfileobj(fi, fo)
                 logging.debug(f"Downloaded resource '{resource_name}' single file to {dst}")
-                logging.info('Download successful')
+                #logging.info('Download successful 3')
                 return 0
     
         except Exception as e:
@@ -315,7 +315,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 try: tmp_zip_path.unlink()
                 except Exception: pass
             if new_session: xnat.disconnect()
-        logging.info('Download successful')
+        #logging.info('Download successful 4')
         return 0
 
 ##########################################################################################

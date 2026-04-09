@@ -30,6 +30,7 @@ def main():
     if args.logfile: logging.basicConfig(filename=args.logfile + ".log", encoding="utf-8", filemode="a", format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
     else: logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
 
+    logging.info(f'Calling sync_resource_xnat {args}')
     return sync_resource_xnat(args.local_resource, args.remote_resource, args.project, 
                               args.subject, args.experiment, args.scan, 
                               bool(args.upload), args.level, args.xnat_host, 
