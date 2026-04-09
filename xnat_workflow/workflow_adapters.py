@@ -8,6 +8,7 @@ import logging
 import tempfile
 import zipfile
 import os 
+import sys
 
 # XNAT-Jupyter workflow helper functions
 import pyxnat
@@ -16,10 +17,43 @@ import requests
 import datetime
 import yaml
 
-#fills the 'job' dict with the values from the data_list csv. 
-def populate_job_fields(env_type,global_vars,data_dict):    
+def populate_job_fields(env_type, global_vars, workflow_id, data_dict, subject=None, exp_label=None, scan_id=None,
+                       subj_key='Subject',exp_key='Experiment',scan_key='Scan'):
+    '''
+    fills the 'job' dict with the values from the data_list csv. 
+    special fields job_subject, job_exp_label, job_scan_id are 
+    populated either from direcly specified subject, exp_label, scan_id parameters,
+    or extracted using specified keys from data_dict. 
+    '''
+
     job={'steps': []}
     for key,val in data_dict.items(): job[key]=val
+
+    #define job_id, job_title, job_subject, job_exp_label, job_scan_id
+    keys=data_dict.keys()
+    job_id=workflow_id
+    job_title=f'Workflow: {workflow_id}'
+    job_workdir=global_vars['g_local_workdir_path']
+    
+    for var,csv_key,job_key in zip ((subject, exp_label, scan_id),
+                                    (subj_key, exp_key, scan_key),
+                                    ('job_subject','job_exp_label','job_scan_id')):
+        if var is not None:         job[job_key]=var
+        elif csv_key in keys:       job[job_key]=data_dict[csv_key]        
+        if job_key in job.keys():
+            val=job[job_key]
+            job_title=f'{job_title}, {csv_key}: {val}'
+            job_id=f'{job_id}_{val}'
+            #e.g. /workdir/<subject>/<experiment>/... etc.
+            job_workdir=job_workdir / val
+    job['job_id'],job['job_title'],job['job_workdir']=job_id,job_title,job_workdir
+    
+    #Do not change the next two lines to correctly preserve the scan context
+    job_scan_context=global_vars['g_input_mount_path'] 
+    if env_type == 'jupyter': job_scan_context = job_scan_context / job['job_exp_label']
+    job_scan_context=job_scan_context / 'SCANS'
+    job['job_scan_context']=job_scan_context    
+            
     return job
 
 def add_job_step(job,step_command,step_title=None):
@@ -218,6 +252,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                         r = s.put(f"{base_url}/{item.name}", params=params, data=f, headers=headers)
                         logging.debug(f"Resource upload OK: {r.status_code} {base_url}")
                         if r.status_code >= 400: logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]}"); return 2
+                logging.info('Upload successful')
                 return 0                            
         except Exception as e:
             print(e)
@@ -232,6 +267,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 try: shutil.rmtree(tmp_dir, ignore_errors=True)
                 except Exception: pass
             if new_session: xnat.disconnect()
+        logging.info('Upload successful')
         return 0
         
     else: #download
@@ -260,12 +296,14 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                     dst.mkdir(parents=True, exist_ok=True)
                     z.extractall(dst)
                     logging.debug(f"Downloaded resource '{resource_name}' to directory {dst}")
+                    logging.info('Download successful')
                     return 0
     
                 if len(members) != 1: logging.error(f"Resource '{resource_name}' has {len(members)} files; local_resource is a file path"); return 2
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 with z.open(members[0], "r") as fi, dst.open("wb") as fo: shutil.copyfileobj(fi, fo)
                 logging.debug(f"Downloaded resource '{resource_name}' single file to {dst}")
+                logging.info('Download successful')
                 return 0
     
         except Exception as e:
@@ -277,6 +315,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 try: tmp_zip_path.unlink()
                 except Exception: pass
             if new_session: xnat.disconnect()
+        logging.info('Download successful')
         return 0
 
 ##########################################################################################
@@ -307,7 +346,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
 ##########################################################################################
 # g_input_mount_path: the input folder with the list of input project experiments, 
 # mounted from the XNAT archive.
-# for 'jupyter', default to '/data/project/<project>/experiments'
+# for 'jupyter', default to '/data/projects/<project>/experiments'
 # for 'container', default to '/input
 
 ##########################################################################################
@@ -328,7 +367,8 @@ def init_global_vars(env_type, project, workflow_id,
                      g_alg_repo_dir=None,
                      g_input_mount_path=None,
                      g_local_workdir_path=None,
-                     g_pymipl_dir=None):
+                     g_pymipl_dir=None
+    ):
     gv={'g_project': project,'g_workflow_id': workflow_id}
     if env_type.lower()=='jupyter':
         gv['g_user_env_repo']=g_user_env_repo        
@@ -347,7 +387,7 @@ def init_global_vars(env_type, project, workflow_id,
             gv['g_alg_repo_dir']='NONE'        
         gv['g_input_mount_path']= (
             g_input_mount_path if g_input_mount_path is not None
-            else Path('/data/project') / project / 'experiments'
+            else Path('/data/projects') / project / 'experiments'
         )
         if g_local_workdir_path is not None: 
             gv['g_local_workdir_path']=g_local_workdir_path 
@@ -356,7 +396,8 @@ def init_global_vars(env_type, project, workflow_id,
         if g_pymipl_dir is not None: 
             gv['g_pymipl_dir']=g_pymipl_dir
         else:
-            raise ValueError('g_pymipl_dir_path cannot be empty if env_type=jupyter')                                    
+            raise ValueError('g_pymipl_dir_path cannot be empty if env_type=jupyter')                            
+    
     elif env_type.lower()=='container':
         gv['g_user_env_repo']=g_user_env_repo        
         gv['g_env_repo_dir']=Path('/opt/packages/user/env_repo')
