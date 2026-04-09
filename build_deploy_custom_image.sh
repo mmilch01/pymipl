@@ -27,6 +27,7 @@ EOF
 config_file="$1"
 if [ "$#" -ne 1 ]; then show_usage;  exit 1; fi
 if [ ! -f "$config_file" ]; then show_usage; exit 1; fi
+if [ ! -d "$PYMIPL_DIR" ]; then exit_with_error "PYMIPL_DIR must be set in order to proceed with the build."; fi
 
 source "$config_file"
 DOCKER_REPO="${DOCKER_REPO:-docker.io}"
@@ -36,8 +37,8 @@ DOCKER_REPO="${DOCKER_REPO:-docker.io}"
 [ -d "${LOCAL_ENV_FOLDER:-}" ] || exit_with_error "LOCAL_ENV_FOLDER $LOCAL_ENV_FOLDER must be a directory."
 
 echo "building image"
-echo docker build --tag "$LOCAL_IMAGE" --build-context user_env="$LOCAL_ENV_FOLDER" -f "$script_dir"/xnat_env_bootstrap/Dockerfile.custom .
-docker build --tag "$LOCAL_IMAGE" --build-context user_env="$LOCAL_ENV_FOLDER" -f "$script_dir"/xnat_env_bootstrap/Dockerfile.custom . || exit_with_error "Image build failed"
+echo docker build --tag "$LOCAL_IMAGE" --build-context user_env="$LOCAL_ENV_FOLDER" -f "$script_dir"/xnat_env_bootstrap/Dockerfile.custom $PYMIPL_DIR
+docker build --tag "$LOCAL_IMAGE" --build-context user_env="$LOCAL_ENV_FOLDER" -f "$script_dir"/xnat_env_bootstrap/Dockerfile.custom $PYMIPL_DIR || exit_with_error "Image build failed"
 
 echo "deploying image"
 docker tag "$LOCAL_IMAGE" "$REMOTE_IMAGE" || exit_with_error "docker tag failed: $LOCAL_IMAGE -> $REMOTE_IMAGE"
