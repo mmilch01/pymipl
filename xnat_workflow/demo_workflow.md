@@ -6,6 +6,7 @@ It is based on https://github.com/JoHof/lungmask codebase.
 First, we assume that the XNAT workflow is installed into $PYMIPL_DIR:
 ```
 export PYMIPL_DIR="~/src/pymipl"
+local_env_dir=/opt/packages/user/user_env
 ```
 
 We start by making environment setup dir on local machine: 
@@ -20,11 +21,11 @@ Then (optionally) clone repository to this dir:
 git clone https://github.com/JoHof/lungmask.git
 ```
 
-The repository is saved under ./lungmask dir. Now we need to create the python environment, and install the user package.
+The repository is saved under $local_env_dir. Now we need to create the python environment, and install the user package.
 ```
 #Create the environment (few seconds)
-micromamba create -p ./lungmask-env python=3.12.3
-micromamba activate -p ./lungmask-env
+micromamba create -p $local_env_dir python=3.12.3
+micromamba activate -p $local_env_dir
 
 #Install the user codebase (in this case, they supply a Python package, so it's automatic)
 pip install lungmask
