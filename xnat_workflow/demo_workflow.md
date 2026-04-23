@@ -1,4 +1,4 @@
-# XNAT AI workflow demo -- full tutorial
+# XNAT AI workflow demo -- building the Docker image
 
 This tutorial illustrates the workflow to run lung mask segmentation on structural CT scans in an XNAT project. 
 It is based on https://github.com/JoHof/lungmask codebase.
