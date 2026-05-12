@@ -50,7 +50,7 @@ def sort_dcms_by_slice_pos(input_dicom_path,dcm_files):
         dcmss+=[dict(file=dcm,dataset=ds,z=z)]
     return sorted(dcmss, key=lambda dcms: dcms['z'])
 
-def create_rtss_dataset(dicoms_sorted,structure_label):
+def create_rtss_dataset(dicoms_sorted,structure_label,series_number=None):
     rf=dicoms_sorted[0]['dataset']
 
     SOP_class_UID='1.2.840.10008.5.1.4.1.1.481.3'
@@ -79,7 +79,7 @@ def create_rtss_dataset(dicoms_sorted,structure_label):
     r.SOPClassUID=SOP_class_UID
     r.SOPInstanceUID=SOP_inst_UID
     r.InstanceNumber='1'
-    r.SeriesNumber=None
+    r.SeriesNumber=series_number
 
     r.StudyDate=rf.StudyDate if 'StudyDate' in rf else date0
     r.StudyTime=rf.StudyTime if 'StudyTime' in rf else time0
@@ -181,7 +181,7 @@ def get_valid_dicom_files(input_dicom_path):
 
     return valid_files
     
-def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str, structure_label,poly_approx_tol,min_poly_pts):
+def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str, structure_label,poly_approx_tol,min_poly_pt,series_number=""):
 
     tol=poly_approx_tol
     
@@ -296,7 +296,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
     #---------------
     # Second DICOM part (RTstruct)
     #---------------
-    rtds=create_rtss_dataset(dicomsSorted,structure_label)
+    rtds=create_rtss_dataset(dicomsSorted,structure_label,series_number)
 
     # Structure Set ROI Sequence
     structure_set_roi_sequence = rtds.StructureSetROISequence
@@ -400,6 +400,7 @@ def get_parser():
     parser.add_argument("input_dicom", help="Path to input DICOM images")
     parser.add_argument("output_dicom", help="Path to output DICOM image")
     parser.add_argument("--structure_label",metavar="<string>",type=str,default="ROI1",help='structure set label [ROI1]')
+    parser.add_argument("--series_number", metavar="<string>", type=str, default=None, help="Segmentation series number [None]")
     parser.add_argument("--tolerance",metavar="<float>", type=float, default=1,help="polygon approximation tolerance (mm) [1]")
     parser.add_argument("--min_poly_pts", metavar="<int>",type=int,default=3,help="minimum number of points in polygon [3]")
 
@@ -408,5 +409,5 @@ def get_parser():
 if __name__ == "__main__":
     p = get_parser()
     print(p)
-    convert(p.input_nifti, p.input_dicom, p.output_dicom, p.structure_label,p.tolerance,p.min_poly_pts)
+    convert(p.input_nifti, p.input_dicom, p.output_dicom, p.structure_label,p.tolerance,p.min_poly_pts,series_number=p.series_number)
     #write_rec_file(p.output_dicom,infiles=[p.input_dicom,p.input_nifti])
