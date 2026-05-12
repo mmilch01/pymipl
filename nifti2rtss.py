@@ -309,7 +309,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
         structure_set_roi = Dataset()
         structure_set_roi.ROINumber = str(ROI)
         structure_set_roi.ReferencedFrameOfReferenceUID = ds.FrameOfReferenceUID 
-        structure_set_roi.ROIName = 'ROI_' + str(ROI)
+        structure_set_roi.ROIName = structure_label
         structure_set_roi.ROIGenerationAlgorithm = 'AUTOMATIC'
         structure_set_roi_sequence.append(structure_set_roi)
 	
@@ -369,7 +369,6 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
     # RT ROI Observations Sequence
     rtroi_observations_sequence = Sequence()
     rtds.RTROIObservationsSequence = rtroi_observations_sequence
-    rtroi_observations_sequence.ROIObservationLabel = structure_label
 
     # Loop over ROI observations
     for ROI in range(1,numberOfROIs+1):
@@ -378,7 +377,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
         rtroi_observations.ObservationNumber = str(ROI)
         rtroi_observations.ReferencedROINumber = str(ROI)
         rtroi_observations.RTROIInterpretedType = 'ORGAN'
-        
+        rtroi_observations.ROIObservationLabel = structure_label
         rtroi_observations.ROIInterpreter = ''
         rtroi_observations_sequence.append(rtroi_observations)
 
