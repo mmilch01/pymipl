@@ -122,7 +122,7 @@ def create_rtss_dataset(dicoms_sorted,structure_label):
 
     #4. RT referenced study sequence, study #1
     rt_referenced_study1=Dataset()
-    rt_referenced_study1.ReferencedSOPClassUID=rf.SOPClassUID
+    rt_referenced_study1.ReferencedSOPClassUID=SOP_class_UID
     rt_referenced_study1.ReferencedSOPInstanceUID=rf.StudyInstanceUID
     
 
@@ -369,6 +369,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
     # RT ROI Observations Sequence
     rtroi_observations_sequence = Sequence()
     rtds.RTROIObservationsSequence = rtroi_observations_sequence
+    rtroi_observations_sequence.ROIObservationLabel = structure_label
 
     # Loop over ROI observations
     for ROI in range(1,numberOfROIs+1):
