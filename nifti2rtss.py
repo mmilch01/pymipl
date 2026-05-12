@@ -181,7 +181,7 @@ def get_valid_dicom_files(input_dicom_path):
 
     return valid_files
     
-def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str, structure_label,poly_approx_tol,min_poly_pt,series_number=""):
+def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str, structure_label,poly_approx_tol,min_poly_pts,series_number):
 
     tol=poly_approx_tol
     
@@ -400,7 +400,7 @@ def get_parser():
     parser.add_argument("input_dicom", help="Path to input DICOM images")
     parser.add_argument("output_dicom", help="Path to output DICOM image")
     parser.add_argument("--structure_label",metavar="<string>",type=str,default="ROI1",help='structure set label [ROI1]')
-    parser.add_argument("--series_number", metavar="<string>", type=str, default=None, help="Segmentation series number [None]")
+    parser.add_argument("--series_number", metavar="<string>", type=str, default=None, help='Segmentation series number [None]')
     parser.add_argument("--tolerance",metavar="<float>", type=float, default=1,help="polygon approximation tolerance (mm) [1]")
     parser.add_argument("--min_poly_pts", metavar="<int>",type=int,default=3,help="minimum number of points in polygon [3]")
 
@@ -409,5 +409,5 @@ def get_parser():
 if __name__ == "__main__":
     p = get_parser()
     print(p)
-    convert(p.input_nifti, p.input_dicom, p.output_dicom, p.structure_label,p.tolerance,p.min_poly_pts,series_number=p.series_number)
+    convert(p.input_nifti, p.input_dicom, p.output_dicom, p.structure_label,p.tolerance,p.min_poly_pts,p.series_number)
     #write_rec_file(p.output_dicom,infiles=[p.input_dicom,p.input_nifti])
