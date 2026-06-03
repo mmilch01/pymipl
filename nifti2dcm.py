@@ -1,6 +1,6 @@
 '''
 Author: Mikhail Milchenko, mmilchenko@wustl.edu
-Copyright (c) 2021, Computational Imaging Lab, Washington University School of Medicine
+Copyright (c) 2026, Computational Imaging Lab, Washington University School of Medicine
 
 Redistribution and use in source and binary forms, for any purpose, with or without modification, are permitted provided that the following conditions are met:
 
@@ -12,6 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 import sys, os, pydicom, argparse
 import nibabel as nib
+from nibabel.orientations import io_orientation, ornt_transform
 import numpy as np
 import ipywidgets as ipw
 from utils import write_rec_file
@@ -53,7 +54,8 @@ def voxel_array_from_sorted_dicoms(dicomsSorted):
     return voxels
 
 def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeriesDescription:str,\
-                         newSeriesInstanceUID:str,newSeriesNumber:int,flipX:bool,flipY:bool,flipZ:bool):
+                         newSeriesInstanceUID:str,newSeriesNumber:int,flipX:bool,flipY:bool,flipZ:bool,\
+                         intensityScaling:bool=False):
     '''
     Main routine to read NIFTI and DICOM images, replace voxels and specified meta tags in DICOM dataset, 
     and write back synthetic DICOM.
@@ -64,22 +66,8 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
     #this line works around apparent bug in nib's Nifti1Header.set_dim_info function
     nii0.header.set_dim_info(None,None,None)
     
-    flips=np.sign(nii0.affine)
-#    print(nii0.affine)
-#    print(flips, flips.shape)
-#    print(nii0)
-
-    print([[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
-    try:
-        nii=nii0.as_reoriented([[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
-    except Exception as e:
-        print(e)
-        return -1
-    
-    print("axes flips:", [[0,-1*flips[0,0]],[1,-1*flips[1,1]],[2,flips[2,2]]])
-    
     dcm_in_files=next(os.walk(input_dcm))[2]
-    numberOfDicomImages = len(dcm_in_files)     
+    numberOfDicomImages = len(dcm_in_files)
     
     
     #get a list of DICOM datasets, one dataset per slice
@@ -88,9 +76,47 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
     ds0=dcm_in_sorted[0]['dataset']
     dcm_pixeldata_type=ds0.pixel_array.dtype
 
+    #reorient NIfTI to match DICOM axes derived from ImageOrientationPatient
+    if 'ImageOrientationPatient' not in ds0:
+        print('ERROR: DICOM missing ImageOrientationPatient; cannot determine orientation.')
+        return -1
+    iop=np.array([float(x) for x in ds0.ImageOrientationPatient])
+    row_dir=iop[:3]
+    col_dir=iop[3:]
+    slice_dir=np.cross(row_dir, col_dir)
+    lps_to_ras=np.diag([-1.,-1.,1.])
+    dcm_axes_ras=lps_to_ras @ np.column_stack([row_dir, col_dir, slice_dir])
+    target_ornt=io_orientation(dcm_axes_ras)
+    nii_ornt=io_orientation(nii0.affine[:3,:3])
+    transform=ornt_transform(nii_ornt, target_ornt)
+    try:
+        nii=nii0.as_reoriented(transform)
+    except Exception as e:
+        print(e)
+        return -1
+    print('NIfTI reoriented to match DICOM axes')
+
     #read voxel arrays
     dcm_in_voxels=voxel_array_from_sorted_dicoms(dcm_in_sorted)
-    nii_in_voxels=nii.get_fdata().astype(ds0.pixel_array.dtype)
+    dcm_dtype=ds0.pixel_array.dtype
+    dtype_info=np.iinfo(dcm_dtype)
+    if intensityScaling:
+        # scale NIfTI range linearly onto DICOM integer range;
+        # encode the mapping in RescaleSlope/Intercept so readers recover real values.
+        raw=nii.get_fdata()
+        vmin,vmax=raw.min(),raw.max()
+        slope=(vmax-vmin)/(dtype_info.max-dtype_info.min) if vmax!=vmin else 1.0
+        intercept=vmin-dtype_info.min*slope
+        nii_in_voxels=np.round((raw-intercept)/slope).astype(dcm_dtype)
+    else:
+        # cast NIfTI to DICOM dtype with explicit clipping; avoid float64
+        # round-trip when NIfTI is already integer.
+        raw=nii.get_data() if np.issubdtype(nii.header.get_data_dtype(),np.integer) else nii.get_fdata()
+        clipped=np.clip(raw,dtype_info.min,dtype_info.max)
+        if not np.array_equal(raw,clipped):
+            print(f'WARNING: NIfTI values clipped to [{dtype_info.min},{dtype_info.max}] to fit DICOM dtype {dcm_dtype}')
+        nii_in_voxels=clipped.astype(dcm_dtype)
+        slope,intercept=None,None
     if dcm_in_voxels.shape != nii_in_voxels.shape:
         print ('NIFTI and DICOM image shapes don\'t match!')
         print ('NIFTI shape:',nii_in_voxels.shape)
@@ -116,11 +142,18 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
     #cycle through input DICOM datasets, replace voxels and metadata, and save in output DICOM dir
     for i in range(len(dcm_in_sorted)):
         ds=dcm_in_sorted[i]['dataset']
-        ds.PixelData=np.transpose(nii_in_voxels[:,:,i]).tobytes()
+        slice_data=np.transpose(nii_in_voxels[:,:,i])
+        ds.PixelData=slice_data.tobytes()
         ds[0x0020, 0x000e].value=siUID
         ds[0x0008,0x103e].value=sDescr
         ds[0x0020, 0x0011].value=sNumber
-        ds.save_as(output_dcm+'/'+str(i)+'.dcm')           
+        if intensityScaling:
+            ds.RescaleSlope=slope
+            ds.RescaleIntercept=intercept
+            ds.RescaleType='US'
+        ds.SmallestImagePixelValue=int(slice_data.min())
+        ds.LargestImagePixelValue=int(slice_data.max())
+        ds.save_as(output_dcm+'/'+str(i)+'.dcm')
 
 def get_parser():
     """
@@ -130,7 +163,7 @@ def get_parser():
 
     # Positional arguments.
     parser.add_argument("input_dicom", help="path to input DICOM dir")
-    parser.add_argument("input_nifti", help="path to input NIFTI image")    
+    parser.add_argument("input_nifti", help="path to input NIFTI image")
     parser.add_argument("output_dicom", help="path to output DICOM dir")
     
     parser.add_argument("--series_description",metavar="<string>",type=str,default=None,help='new series description [keep original]')
@@ -138,17 +171,20 @@ def get_parser():
     
     parser.add_argument("--series_number",metavar="<string>",type=str,default=None,help='new series number [keep original]')
     parser.add_argument("--flip_x",action="store_true",default=False,help='flip X axis')
-    parser.add_argument("--flip_y",action="store_true",default=False,help='flip Y axis')    
+    parser.add_argument("--flip_y",action="store_true",default=False,help='flip Y axis')
     parser.add_argument("--flip_z",action="store_true",default=False,help='flip Z axis')
-    
-    return parser.parse_args() 
+    parser.add_argument("--intensity_scaling",metavar="<bool>",type=str,default='False',choices=['True','False'],
+                        help='scale NIfTI intensities to DICOM integer range and encode mapping in RescaleSlope/Intercept [False]')
+
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    
+
     p = get_parser()
     print(p)
     write_rec_file(p.output_dicom, infiles=[p.input_dicom,p.input_nifti])
-    
+
     sys.exit (convert_nifti_to_dcm(p.input_dicom,p.input_nifti,p.output_dicom,p.series_description, \
-                        p.series_uid,p.series_number,p.flip_x,p.flip_y,p.flip_z))
+                        p.series_uid,p.series_number,p.flip_x,p.flip_y,p.flip_z,\
+                        p.intensity_scaling=='True'))
     
