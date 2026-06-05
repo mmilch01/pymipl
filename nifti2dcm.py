@@ -15,7 +15,7 @@ import nibabel as nib
 from nibabel.orientations import io_orientation, ornt_transform
 import numpy as np
 import ipywidgets as ipw
-from utils import write_rec_file
+#from utils import write_rec_file
 
 def sort_dcms_by_slice_pos(input_dicom_path,dcm_files,stop_before_pixels=True):
     '''
@@ -26,8 +26,8 @@ def sort_dcms_by_slice_pos(input_dicom_path,dcm_files,stop_before_pixels=True):
     for idx,dcm in enumerate(dcm_files):
         ds = pydicom.dcmread(os.path.join(input_dicom_path,dcm), stop_before_pixels)
         if idx==0:           
-            if 'ImagePositionPatient' in ds: sortTag='ImagePositionPatient'
-            elif 'SliceLocation' in ds: sortTag='SliceLocation'
+            #if 'ImagePositionPatient' in ds: sortTag='ImagePositionPatient'
+            if 'SliceLocation' in ds: sortTag='SliceLocation'
             else: return None
         if not sortTag in ds: return None
         if sortTag=='ImagePositionPatient': z=ds.ImagePositionPatient[2]
@@ -86,8 +86,15 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
     slice_dir=np.cross(row_dir, col_dir)
     lps_to_ras=np.diag([-1.,-1.,1.])
     dcm_axes_ras=lps_to_ras @ np.column_stack([row_dir, col_dir, slice_dir])
-    target_ornt=io_orientation(dcm_axes_ras)
-    nii_ornt=io_orientation(nii0.affine[:3,:3])
+    dcm_affine = np.eye(4)
+    dcm_affine[:3, :3] = dcm_axes_ras
+    target_ornt=io_orientation(dcm_affine)
+    nii_ornt=io_orientation(nii0.affine)
+
+    print(dcm_axes_ras)
+    print(target_ornt)
+    print(nii_ornt)
+
     transform=ornt_transform(nii_ornt, target_ornt)
     try:
         nii=nii0.as_reoriented(transform)
@@ -117,6 +124,8 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
             print(f'WARNING: NIfTI values clipped to [{dtype_info.min},{dtype_info.max}] to fit DICOM dtype {dcm_dtype}')
         nii_in_voxels=clipped.astype(dcm_dtype)
         slope,intercept=None,None
+    nii_in_voxels=nii_in_voxels.squeeze()
+
     if dcm_in_voxels.shape != nii_in_voxels.shape:
         print ('NIFTI and DICOM image shapes don\'t match!')
         print ('NIFTI shape:',nii_in_voxels.shape)
@@ -142,6 +151,7 @@ def convert_nifti_to_dcm(input_dcm:str, input_nifti:str, output_dcm:str, newSeri
     #cycle through input DICOM datasets, replace voxels and metadata, and save in output DICOM dir
     for i in range(len(dcm_in_sorted)):
         ds=dcm_in_sorted[i]['dataset']
+        print(f'ImagePositionPatient: {ds.ImagePositionPatient}, SliceLocation: {ds.SliceLocation}')
         slice_data=np.transpose(nii_in_voxels[:,:,i])
         ds.PixelData=slice_data.tobytes()
         ds[0x0020, 0x000e].value=siUID
@@ -182,7 +192,7 @@ if __name__ == "__main__":
 
     p = get_parser()
     print(p)
-    write_rec_file(p.output_dicom, infiles=[p.input_dicom,p.input_nifti])
+    #write_rec_file(p.output_dicom, infiles=[p.input_dicom,p.input_nifti])
 
     sys.exit (convert_nifti_to_dcm(p.input_dicom,p.input_nifti,p.output_dicom,p.series_description, \
                         p.series_uid,p.series_number,p.flip_x,p.flip_y,p.flip_z,\
