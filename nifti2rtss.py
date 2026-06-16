@@ -79,7 +79,10 @@ def create_rtss_dataset(dicoms_sorted,structure_label,series_number=None):
     r.SOPClassUID=SOP_class_UID
     r.SOPInstanceUID=SOP_inst_UID
     r.InstanceNumber='1'
-    r.SeriesNumber=series_number
+    if series_number:
+        r.SeriesNumber=series_number
+    else:
+        r.SeriesNumber=str(rf.SeriesNumber)+'01'
 
     r.StudyDate=rf.StudyDate if 'StudyDate' in rf else date0
     r.StudyTime=rf.StudyTime if 'StudyTime' in rf else time0
@@ -382,6 +385,8 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
         rtroi_observations_sequence.append(rtroi_observations)
 
     rtds.ApprovalStatus='UNAPPROVED'
+    rtds.file_meta.FileMetaInformationVersion = b'\x00\x01'
+    
     RTDCM_name = output_dicom_path
     #ds.is_implicit_VR,ds.is_little_endian=True,True
     print('is_implicit_VR=',ds.is_implicit_VR,'is_little_endian=',ds.is_little_endian)
