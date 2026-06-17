@@ -257,7 +257,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                         logging.debug(f"Resource upload OK: {r.status_code} {base_url}")
                         if r.status_code >= 400: logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]}"); return 2
                 if level == "scan" and pullDataFromHeaders:
-                    uri = f"/data/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/scans/{scan_id}"
+                    uri = f"{XNAT_HOST}/data/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/scans/{scan_id}"
                     r = s.put(uri, params={"pullDataFromHeaders": "true"})
                     if r.status_code >= 400: logging.error(f"pullDataFromHeaders failed: {r.status_code} {uri} {r.text[:1000]}"); return 2
                     logging.debug(f"pullDataFromHeaders OK: {r.status_code} {uri}")

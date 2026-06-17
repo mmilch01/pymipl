@@ -24,7 +24,7 @@ RUN micromamba install -y -n base -c conda-forge \
     python=3.8.16 \
     requests \
     pip \
-    && micromamba run -n base python -m pip install --no-cache-dir pyxnat pyyaml requests nibabel pandas rt_utils matplotlib scipy \
+    && micromamba run -n base python -m pip install --no-cache-dir pyxnat pyyaml requests nibabel pandas rt_utils matplotlib scipy pydicom scikit-image cmdline_provenance\
     && micromamba install -y -n base -c conda-forge simpleitk \
     && micromamba install -y -n base -c conda-forge opencv \
     && micromamba clean -a -y
