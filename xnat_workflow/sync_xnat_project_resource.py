@@ -12,7 +12,10 @@ import requests
 from pyxnat import Interface
 
 
-def sync_resource(xnat_project, subject, experiment, scan, local_resource, resource_name, upload=True, level="scan", XNAT_HOST=None, username=None, password=None, create_hierarchy=False):
+def sync_resource(xnat_project, subject, experiment, scan, local_resource, 
+                  resource_name, upload=True, level="scan", XNAT_HOST=None, 
+                  username=None, password=None, create_hierarchy=False,
+                  pullDataFromHeaders=False, xsiType="xnat:mrScanData", format=None):
 
     if XNAT_HOST is None: XNAT_HOST = os.environ.get("XNAT_HOST")
     if username is None or password is None: username = os.environ.get("XNAT_USER"); password = os.environ.get("XNAT_PASS")
@@ -48,7 +51,8 @@ def sync_resource(xnat_project, subject, experiment, scan, local_resource, resou
             scan_obj = exp_obj.scan(scan_id)
             if not scan_obj.exists():
                 if not upload or not create_hierarchy: logging.error(f"Scan {scan_id} does not exist under experiment {exp}"); return -1
-                scan_obj.create(); logging.info(f"Created scan '{scan_id}'")
+                scan_obj.create(scans=xsiType)
+                logging.info(f"Created {xsiType} scan '{scan_id}'")
 
         if level == "project": res_obj = project.resource(resource_name)
         elif level == "subject": res_obj = subj_obj.resource(resource_name)
@@ -88,11 +92,17 @@ def sync_resource(xnat_project, subject, experiment, scan, local_resource, resou
                 for item in upload_items:
                     with item.open("rb") as f:
                         is_zip_upload = (tmp_zip is not None and item == tmp_zip)
+                        if format: params["format"] = format
                         if is_zip_upload: params["extract"] = "true"; headers = {"Content-Type": "application/zip"}
                         else: headers = {"Content-Type": "application/octet-stream"}
                         r = s.put(f"{base_url}/{item.name}", params=params, data=f, headers=headers)
                         logging.info(f"Resource upload OK: {r.status_code} {base_url}")
-                        if r.status_code >= 400: logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]}"); return 2
+                        if not r.ok: logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]}"); return 2
+                if level == "scan" and pullDataFromHeaders:
+                    uri = f"/data/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/scans/{scan_id}"
+                    r=s.put(uri, params={"pullDataFromHeaders": "true"})
+                    if not r.ok: logging.error(f"pullDataFromHeaders failed: {r.status_code} {uri} {r.text[:1000]}"); return 2
+                    logging.info(f"pullDataFromHeaders OK: {r.status_code} {uri}")
         finally:
             if tmp_zip and tmp_zip.exists():
                 try: tmp_zip.unlink()
@@ -154,6 +164,9 @@ def main():
     ap.add_argument("--user")
     ap.add_argument("--password")
     ap.add_argument("--create_hierarchy", type=int, choices=[0, 1], default=0)
+    ap.add_argument("--pullDataFromHeaders", type=int, choices=[0, 1], default=0)
+    ap.add_argument("--xsiType", default="xnat:mrScanData", help="XNAT xsiType for created scan when --create_hierarchy is used and --level is scan (default: xnat:mrScanData)")
+    ap.add_argument("--format", default=None, help="Specify format for uploaded resource [None]")
     ap.add_argument("--logfile")
     args = ap.parse_args()
 
@@ -164,7 +177,10 @@ def main():
     if args.logfile: logging.basicConfig(filename=args.logfile + ".log", encoding="utf-8", filemode="a", format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
     else: logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M")
 
-    return sync_resource(args.xnat_project, args.subject, args.experiment, args.scan, args.local_resource, args.resource_name, bool(args.upload), args.level, args.xnat_host, args.user, args.password, bool(args.create_hierarchy))
+    return sync_resource(args.xnat_project, args.subject, args.experiment, args.scan, 
+        args.local_resource, args.resource_name, bool(args.upload), args.level, 
+        args.xnat_host, args.user, args.password, bool(args.create_hierarchy),
+        bool(args.pullDataFromHeaders), args.xsiType, args.format)
 
 if __name__ == "__main__":
     sys.exit(main())

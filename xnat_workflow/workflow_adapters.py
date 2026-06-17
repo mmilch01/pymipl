@@ -121,7 +121,9 @@ def launch_cs_command(xnat_interface,project,subject,experiment,session,workflow
 
 def sync_resource_xnat(local_resource, resource_name, project, subject=None, 
        experiment=None, scan=None, upload=True, level="scan", XNAT_HOST=None, 
-       username=None, password=None, xnat_interface=None, create_hierarchy=False, debug=False,include_dir_under_resource=False):
+       username=None, password=None, xnat_interface=None, create_hierarchy=False,
+       debug=False, include_dir_under_resource=False, pullDataFromHeaders=False,
+       xsiType="xnat:mrScanData", format=None):
     '''
     Synchronizes a local file or directory with an XNAT resource at project, subject, experiment, or scan level.
     Supports both upload and download modes, with optional automatic creation of missing hierarchy elements. 
@@ -183,7 +185,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                 if not upload or not create_hierarchy: 
                     logging.error(f"Scan {scan_id} does not exist under experiment {exp}")
                     return 3
-                scan_obj.create(); logging.debug(f"Created scan '{scan_id}'")
+                scan_obj.create(scans=xsiType); logging.debug(f"Created {xsiType} scan '{scan_id}'")
     
         if level == "project": 
             res_obj = project.resource(resource_name)            
@@ -249,10 +251,17 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                             headers = {"Content-Type": "application/zip"}
                         else: 
                             headers = {"Content-Type": "application/octet-stream"}
+                        if format:
+                            params["format"] = format
                         logging.debug(f"uploading to {base_url}/{item.name}")
                         r = s.put(f"{base_url}/{item.name}", params=params, data=f, headers=headers)
                         logging.debug(f"Resource upload OK: {r.status_code} {base_url}")
                         if r.status_code >= 400: logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]}"); return 2
+                if level == "scan" and pullDataFromHeaders:
+                    uri = f"/data/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/scans/{scan_id}"
+                    r = s.put(uri, params={"pullDataFromHeaders": "true"})
+                    if r.status_code >= 400: logging.error(f"pullDataFromHeaders failed: {r.status_code} {uri} {r.text[:1000]}"); return 2
+                    logging.debug(f"pullDataFromHeaders OK: {r.status_code} {uri}")
                 #logging.info('Upload successful 1')
                 return 0                            
         except Exception as e:

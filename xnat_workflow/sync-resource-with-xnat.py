@@ -20,6 +20,9 @@ def main():
     ap.add_argument("--jsessionid", help="XNAT JSESSIONID token (overrides user/password)")    
     ap.add_argument("--create_hierarchy", type=int, choices=[0, 1], default=0)
     ap.add_argument("--include_dir_under_resource", type=int, choices=[0, 1], default=0, help="include uploaded directory name as next level in resource")
+    ap.add_argument("--pullDataFromHeaders", type=int, choices=[0, 1], default=0)
+    ap.add_argument("--xsiType", default="xnat:mrScanData", help="XNAT xsiType for created scan when --create_hierarchy is used and --level is scan (default: xnat:mrScanData)")
+    ap.add_argument("--format", default=None, help="Specify format for uploaded resource [None]")
     ap.add_argument("--logfile")
     args = ap.parse_args()
 
@@ -35,7 +38,9 @@ def main():
                               args.subject, args.experiment, args.scan, 
                               bool(args.upload), args.level, args.xnat_host, 
                               args.user, args.password, args.jsessionid,
-                              bool(args.create_hierarchy),include_dir_under_resource=bool(args.include_dir_under_resource))
+                              bool(args.create_hierarchy), include_dir_under_resource=bool(args.include_dir_under_resource),
+                              pullDataFromHeaders=bool(args.pullDataFromHeaders),
+                              xsiType=args.xsiType, format=args.format)
 
 if __name__ == "__main__":
     sys.exit(main())
