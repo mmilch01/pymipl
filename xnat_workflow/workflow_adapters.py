@@ -49,9 +49,8 @@ def populate_job_fields(env_type, global_vars, workflow_id, data_dict, subject=N
     job['job_id'],job['job_title'],job['job_workdir']=job_id,job_title,job_workdir
     
     #Do not change the next two lines to correctly preserve the scan context
-    job_scan_context=global_vars['g_input_mount_path'] 
-    if env_type == 'jupyter': job_scan_context = job_scan_context / job['job_exp_label']
-    job_scan_context=job_scan_context / 'SCANS'
+    job_scan_context=global_vars['g_input_mount_path'] / job['job_exp_label'] / 'SCANS'
+    #job_scan_context=job_scan_context / 'SCANS'
     job['job_scan_context']=job_scan_context    
             
     return job
