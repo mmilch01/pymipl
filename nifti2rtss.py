@@ -184,7 +184,7 @@ def get_valid_dicom_files(input_dicom_path):
 
     return valid_files
     
-def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str, structure_label,poly_approx_tol,min_poly_pts,series_number):
+def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str, structure_label,poly_approx_tol,min_poly_pts,series_number,series_description):
 
     tol=poly_approx_tol
     
@@ -299,7 +299,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
     #---------------
     # Second DICOM part (RTstruct)
     #---------------
-    rtds=create_rtss_dataset(dicomsSorted,structure_label,series_number)
+    rtds=create_rtss_dataset(dicomsSorted,structure_label,series_number,series_description)
 
     # Structure Set ROI Sequence
     structure_set_roi_sequence = rtds.StructureSetROISequence
