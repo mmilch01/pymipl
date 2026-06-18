@@ -10,12 +10,13 @@ ENV MAMBA_ROOT_PREFIX=/opt/micromamba \
     PATH=/usr/local/bin:/opt/micromamba/bin:/usr/bin:/bin \
     nnUNet_raw=/opt/nnunet/raw                                 \
     nnUNet_preprocessed=/opt/nnunet/preprocessed               \
-    nnUNet_results=/opt/nnunet/results
+    nnUNet_results=/opt/nnunet/results  \
+    HOME=/tmp
 
 RUN mkdir -p /opt/micromamba /opt/entrypoint /opt/packages/pymipl /opt/packages/user/env_repo /workdir /opt/nnunet/raw /opt/nnunet/preprocessed /opt/nnunet/results \
     && curl -L https://anaconda.org/conda-forge/micromamba/2.4.0/download/linux-64/micromamba-2.4.0-0.tar.bz2 \
        | tar -xvj -C /usr/local/bin --strip-components=1 bin/micromamba \
-    && chmod 0755 /usr/local/bin/micromamba && chmod -R a+rX /opt/micromamba /opt/entrypoint
+    && chmod 0755 /usr/local/bin/micromamba && chmod -R a+rX /opt/micromamba /opt/entrypoint 
 
 RUN chmod 777 /workdir
 
@@ -23,10 +24,12 @@ RUN micromamba install -y -n base -c conda-forge \
     python=3.8.16 \
     requests \
     pip \
-    && micromamba run -n base python -m pip install --no-cache-dir pyxnat pyyaml requests nibabel pandas rt_utils matplotlib scipy \
+    && micromamba run -n base python -m pip install --no-cache-dir pyxnat pyyaml requests nibabel pandas rt_utils matplotlib scipy pydicom scikit-image cmdline_provenance\
     && micromamba install -y -n base -c conda-forge simpleitk \
     && micromamba install -y -n base -c conda-forge opencv \
     && micromamba clean -a -y
+
+RUN rm -rf /tmp/.cache
 
 # Bootstrap entrypoint
 COPY --chmod=755 ./xnat_env_bootstrap/nnunet_predict_wrapper.sh ./xnat_env_bootstrap/main.sh /opt/entrypoint/
@@ -36,6 +39,7 @@ COPY --chmod=755 xnat_workflow /opt/packages/pymipl/xnat_workflow
 # user environment setup (until XNAT supports mounting global resources in CS)
 #COPY --chmod=755 ./xnat_env_bootstrap/user_env/ /opt/packages/user/env_repo/
 COPY --chmod=755 --from=user_env / /opt/packages/user/env_repo/
-
+COPY --chmod=755 --from=user_src / /opt/packages/user/alg_repo/
+COPY --chmod=755 --from=runtime_src / /opt/packages/user/runtime_repo/
 
 #CMD ["/opt/bootstrap/bootstrap.sh"]

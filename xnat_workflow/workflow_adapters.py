@@ -49,9 +49,8 @@ def populate_job_fields(env_type, global_vars, workflow_id, data_dict, subject=N
     job['job_id'],job['job_title'],job['job_workdir']=job_id,job_title,job_workdir
     
     #Do not change the next two lines to correctly preserve the scan context
-    job_scan_context=global_vars['g_input_mount_path'] 
-    if env_type == 'jupyter': job_scan_context = job_scan_context / job['job_exp_label']
-    job_scan_context=job_scan_context / 'SCANS'
+    job_scan_context=global_vars['g_input_mount_path'] / job['job_exp_label'] / 'SCANS'
+    #job_scan_context=job_scan_context / 'SCANS'
     job['job_scan_context']=job_scan_context    
             
     return job
@@ -258,7 +257,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
                         logging.debug(f"Resource upload OK: {r.status_code} {base_url}")
                         if r.status_code >= 400: logging.error(f"Upload failed: {r.status_code} {base_url} {r.text[:1000]}"); return 2
                 if level == "scan" and pullDataFromHeaders:
-                    uri = f"/data/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/scans/{scan_id}"
+                    uri = f"{XNAT_HOST}/data/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/scans/{scan_id}"
                     r = s.put(uri, params={"pullDataFromHeaders": "true"})
                     if r.status_code >= 400: logging.error(f"pullDataFromHeaders failed: {r.status_code} {uri} {r.text[:1000]}"); return 2
                     logging.debug(f"pullDataFromHeaders OK: {r.status_code} {uri}")
