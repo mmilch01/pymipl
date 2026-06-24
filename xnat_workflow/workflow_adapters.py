@@ -47,9 +47,8 @@ def populate_job_fields(env_type, global_vars, workflow_id, data_dict, subject=N
             #e.g. /workdir/<subject>/<experiment>/... etc.
             job_workdir=job_workdir / val
     job['job_id'],job['job_title'],job['job_workdir']=job_id,job_title,job_workdir
-    if 'job_scan_id' in job.keys():
-        job['job_numeric_scan_id'] = "".join(c for c in job['job_scan_id'] if c.isdigit())
-s
+    if 'job_scan_id' in job:
+        job['job_numeric_scan_id'] = "".join(c for c in str(job['job_scan_id']) if c.isdigit())
     
     #Do not change the next two lines to correctly preserve the scan context
     job_scan_context=global_vars['g_input_mount_path'] / job['job_exp_label'] / 'SCANS'
