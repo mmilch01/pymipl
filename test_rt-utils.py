@@ -49,12 +49,12 @@ def buildMasks(structPath, rtPath, outroot):
     dicom_names = reader.GetGDCMSeriesFileNames(structPath)
     reader.SetFileNames(dicom_names)
     ref_img = reader.Execute()
-    sitk.WriteImage(ref_img,outroot+'_struct.nii')
+    sitk.WriteImage(ref_img,outroot+'_struct.nii.gz')
 
     for roi_name,mask in zip(roi_names,masks):
         mask_img=sitk.GetImageFromArray(mask)
         mask_img.CopyInformation(ref_img)
-        sitk.WriteImage(mask_img,outroot+'_roi_'+re.sub(r'[^a-zA-Z0-9-.]', '_', roi_name)+'.nii',imageIO="NiftiImageIO")
+        sitk.WriteImage(mask_img,outroot+'_roi_'+re.sub(r'[^a-zA-Z0-9-.]', '_', roi_name)+'.nii.gz',imageIO="NiftiImageIO")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="RT Struct converter")
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     #dicom_series_path = "/data/ADAPT/RIDER-1129164940/09-20-2006-1-NA-96508/scans/4-unknown/resources/DICOM"
     #rt_struct_path="/data/ADAPT/RIDER-1129164940/09-20-2006-1-NA-96508/scans/9-TEST/resources/secondary/1-1.dcm"
-    #outfile="/data/ADAPT/RIDER-1129164940/09-20-2006-1-NA-96508/outfile.nii"
+    #outfile="/data/ADAPT/RIDER-1129164940/09-20-2006-1-NA-96508/outfile.nii.gz"
     #buildMaskArray(dicom_series_path,rt_struct_path)
     #buildMasks(dicom_series_path,rt_struct_path,outfile)
 '''
@@ -80,8 +80,8 @@ if __name__ == "__main__":
     )
     print("Available ROI Names:")
     for roi_name in rtstruct.get_roi_names():
-        print(f"saving {roi_name}.nii")
+        print(f"saving {roi_name}.nii.gz")
         mask_3d = rtstruct.get_roi_mask_by_name(roi_name)
         nifti_img = nib.Nifti1Image(mask_3d.astype('uint8'), affine=np.eye(4))
-        nib.save(nifti_img, f"{roi_name}.nii")
+        nib.save(nifti_img, f"{roi_name}.nii.gz")
 '''
