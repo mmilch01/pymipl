@@ -168,6 +168,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             if not subj_obj.exists():
                 if not upload or not create_hierarchy: 
                     logging.error(f"Subject {subj} does not exist")
+                    if new_session: xnat.disconnect()
                     return 1
                 subj_obj.create()
                 logging.debug(f"Created subject '{subj}'")
@@ -177,6 +178,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             if not exp_obj.exists():
                 if not upload or not create_hierarchy: 
                     logging.error(f"Experiment '{exp}' does not exist")
+                    if new_session: xnat.disconnect()
                     return 2
                 exp_obj.create(); logging.debug(f"Created experiment '{exp}'")
 
@@ -185,6 +187,7 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
             if not scan_obj.exists():
                 if not upload or not create_hierarchy: 
                     logging.error(f"Scan {scan_id} does not exist under experiment {exp}")
+                    if new_session: xnat.disconnect()
                     return 3
                 scan_obj.create(scans=xsiType); logging.debug(f"Created {xsiType} scan '{scan_id}'")
     
@@ -206,15 +209,14 @@ def sync_resource_xnat(local_resource, resource_name, project, subject=None,
         if upload and not res_obj.exists(): res_obj.create()
         if not upload and not res_obj.exists(): 
             logging.error(f"Resource '{resource_name}' does not exist at level {level}, res_obj:{res_obj}")
+            if new_session: xnat.disconnect()
             return 4
 
     except Exception as e:
         print(e)
         logging.error(e)
-        return 5
-    finally:
         if new_session: xnat.disconnect()
-
+        return 5
     if level == "project": base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/resources/{resource_name}/files"
     if level == "subject": base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/subjects/{subj}/resources/{resource_name}/files"
     if level == "experiment": base_url = f"{XNAT_HOST}/data/archive/projects/{PROJECT_ID}/subjects/{subj}/experiments/{exp}/resources/{resource_name}/files"
@@ -512,4 +514,3 @@ def workflow_to_batch(job_yaml, global_vars, output_batch_file, error_message=No
 
         #f.write(f'echo "############ END JOB: {title}"\n')
     out.chmod(0o755)
-

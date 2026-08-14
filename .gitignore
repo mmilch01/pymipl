@@ -1,0 +1,8 @@
+.ipynb_checkpoints/*
+.vscode/*
+*.nii
+xnat_env_bootstrap/user_env-nnunet/*
+__pycache__/*
+xnat_env_bootstrap/user_env/*
+xnat_workflow/__pycache__/*
+xnat_env_bootstap/nnunet_models/*
