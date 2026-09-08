@@ -438,11 +438,11 @@ def get_parser():
     parser.add_argument("output_dicom", help="Path to output DICOM image")
     parser.add_argument("--structure_labels", metavar="<label,...>", type=parse_structure_labels,
                         default=["ROI1"], help='ordered, comma-separated structure labels [ROI1]')
-    parser.add_argument("--segmentation-intensities", metavar="<all|int,...>",
+    parser.add_argument("--segmentation_intensities", metavar="<all|int,...>",
                         type=parse_segmentation_intensities, default='all',
                         help="'all' for one binary mask or ordered, comma-separated label intensities [all]")
-    parser.add_argument("--structure-set-label", metavar="<string>", default=None,
-                        help="structure-set label [the ROI label for single ROI; MULTI_ROI for multiple]")
+    parser.add_argument("--structure_set_label", metavar="<string>", default=None,
+                        help="structure set label [the ROI label for single ROI; MULTI_ROI for multiple]")
     parser.add_argument("--series_description",metavar="<string>",type=str,default=None,help='series description for RTSTRUCT [None]')
     parser.add_argument("--series_number", metavar="<string>", type=str, default=None, help='Segmentation series number [None]')
     parser.add_argument("--tolerance",metavar="<float>", type=float, default=1,help="polygon approximation tolerance (mm) [1]")
