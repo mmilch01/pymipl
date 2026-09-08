@@ -21,12 +21,19 @@ usage: convert_subvol \<NIFTI subimage\> \<original NIFTI image\> [options] <br>
 
 ## nifti2rtss.py
 
-Create RTSTRUCT from a NIFTI binary volume and structural MRI. 
+Create RTSTRUCT from a NIFTI binary or multi-organ label-map volume and structural MRI.
 
 Input: reference DICOM directory, NIFTI mask volume <br> 
 Output: RTSTRUCT with conturs created from this NIFTI mask referencing the reference DICOM series.
 
-usage: nifti2rtss.py [-h] [--structure_label <string>] [--tolerance <float>] [--min_poly_pts <int>] input_nifti input_dicom output_dicom<br>
+usage: nifti2rtss.py [-h] [--structure_labels <label,...>] [--segmentation-intensities <all|int,...>] [--structure-set-label <string>] [--tolerance <float>] [--min_poly_pts <int>] input_nifti input_dicom output_dicom<br>
+
+For a multi-organ label map, structure labels and intensities are ordered lists and must have the same length:
+
+    nifti2rtss.py segmentation.nii dicom_dir output.dcm --structure_labels Liver,Spleen --segmentation-intensities 1,2
+
+The default `--segmentation-intensities all` retains the original single-mask behavior.
+For multiple ROIs, the structure-set label defaults to `MULTI_ROI`; override it with `--structure-set-label`.
 
 ## rtss2nifti.py
 Convert DICOM RT structure images to NIFTI
@@ -44,4 +51,3 @@ input: 3D binary mask<br>
 output: 3D mesh file. Output formats are those supported by <a href="https://pypi.org/project/meshio">meshio</a><br>
 <br>
 Note: requires <a href="https://itkpythonpackage.readthedocs.io">ITK</a>
-

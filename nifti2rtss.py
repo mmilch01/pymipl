@@ -184,7 +184,23 @@ def get_valid_dicom_files(input_dicom_path):
 
     return valid_files
     
-def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str, structure_label,poly_approx_tol,min_poly_pts,series_number,series_description):
+def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str,
+            structure_labels, segmentation_intensities, structure_set_label,
+            poly_approx_tol, min_poly_pts, series_number, series_description):
+
+    if not structure_labels:
+        raise ValueError('At least one structure label must be supplied.')
+    if segmentation_intensities == 'all':
+        if len(structure_labels) != 1:
+            raise ValueError("'all' segmentation intensities requires exactly one structure label.")
+        numberOfROIs = 1
+    else:
+        if len(structure_labels) != len(segmentation_intensities):
+            raise ValueError('The number of structure labels must match the number of segmentation intensities.')
+        numberOfROIs = len(structure_labels)
+
+    if structure_set_label is None:
+        structure_set_label = structure_labels[0] if numberOfROIs == 1 else 'MULTI_ROI'
 
     tol=poly_approx_tol
     
@@ -196,8 +212,6 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
     dicomFiles = get_valid_dicom_files(input_dicom_path)
 
     numberOfDicomImages = len(dicomFiles)
-    numberOfROIs = 1   # The whole volume is 1 ROI, assuming 1 tumour per patient
-    
     # Load template DICOM file header (first file)
     dicomsSorted=sort_dcms_by_slice_pos(input_dicom_path,dicomFiles)
 
@@ -242,8 +256,6 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
 
     print('Nifti file dimensions:',volume.shape)
 
-    AllCoordinates = []
-
     if len(volume.shape)==4: 
         volume = volume[...,0]
         print('Assuming the first channel of the input nifti is the seg mask.')
@@ -251,59 +263,59 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
         print('Segmentation mask has the same number of dimensions as the input volume.')
     else:
         print('Dimension not supported.')
-            
-    # Loop over slices in volume, get contours for each slice
-    #DEBUG: inited=0
-    for slice in range(volume.shape[2]):
-        AllCoordinatesThisSlice = []
-	
-        image = volume[:,:,slice]
-        
-        # Get contours in this slice using scikit-image
-        contours = measure.find_contours(image, 0.5)
-	    
-	    
-        #if len(contours)>0: print("slice ",slice,", contours:", len(contours))
 
-        # Save contours for later use
-        for n, contour in enumerate(contours):
-        
-            #DEBUG: if inited==2: continue
-            #print("n is ",n,"for slice ",slice)
-            nc=len(contour[:,0])
-            cont1=measure.approximate_polygon(contour,poly_approx_tol)
-            nCoordinates = len(cont1[:,0])
-            #if nc>1000: print('Large contour before approximation: ',nc,'pts, after:',nCoordinates)
-            if nCoordinates<min_poly_pts: continue
-            #DEBUG: inited+=1
-            #print("number of coordinates is ",len(contour[:,0])*3," for contour ",n," for slice ",slice)
-            zcoordinates = slice * np.ones((nCoordinates,1)) 
-            
-            # Add patient position offset
-            reg_contour = np.append(cont1, zcoordinates, -1)
-            # Assume no other orientations for simplicity
-            reg_contour[:,0] = reg_contour[:,0] * xPixelSize + patientPosition[0]
-            reg_contour[:,1] = reg_contour[:,1] * yPixelSize + patientPosition[1]
-            #z coordinate will be fixed later.
-            reg_contour[:,2] = reg_contour[:,2] * zPixelSize + patientStartingZ
+    if segmentation_intensities == 'all':
+        roi_volumes = [volume]
+    else:
+        roi_volumes = [volume == intensity for intensity in segmentation_intensities]
 
-            # Storing coordinates as mm instead of as voxels
-            #coordinates = concatenate_coordinates(contour[:,0] * xPixelSize, contour[:,1] * yPixelSize, zcoordinates * zPixelSize)
-            coordinates = concatenate_coordinates(*reg_contour.T)
-            coordinates = np.squeeze(coordinates)
-            
-            AllCoordinatesThisSlice.append(coordinates)
+    AllCoordinates = []
 
-        AllCoordinates.append(AllCoordinatesThisSlice)
+    # Loop over ROIs and slices in the volume, getting contours for each slice.
+    for roi_volume in roi_volumes:
+        AllCoordinatesThisROI = []
+        for slice in range(volume.shape[2]):
+            AllCoordinatesThisSlice = []
+
+            image = roi_volume[:,:,slice]
+
+            # Get contours in this slice using scikit-image
+            contours = measure.find_contours(image, 0.5)
+
+            # Save contours for later use
+            for n, contour in enumerate(contours):
+                nc=len(contour[:,0])
+                cont1=measure.approximate_polygon(contour,poly_approx_tol)
+                nCoordinates = len(cont1[:,0])
+                if nCoordinates<min_poly_pts: continue
+                zcoordinates = slice * np.ones((nCoordinates,1))
+
+                # Add patient position offset
+                reg_contour = np.append(cont1, zcoordinates, -1)
+                # Assume no other orientations for simplicity
+                reg_contour[:,0] = reg_contour[:,0] * xPixelSize + patientPosition[0]
+                reg_contour[:,1] = reg_contour[:,1] * yPixelSize + patientPosition[1]
+                #z coordinate will be fixed later.
+                reg_contour[:,2] = reg_contour[:,2] * zPixelSize + patientStartingZ
+
+                # Storing coordinates as mm instead of as voxels
+                coordinates = concatenate_coordinates(*reg_contour.T)
+                coordinates = np.squeeze(coordinates)
+
+                AllCoordinatesThisSlice.append(coordinates)
+
+            AllCoordinatesThisROI.append(AllCoordinatesThisSlice)
+        AllCoordinates.append(AllCoordinatesThisROI)
 
     #---------------
     # Second DICOM part (RTstruct)
     #---------------
-    rtds=create_rtss_dataset(dicomsSorted,structure_label,series_number,series_description)
+    # StructureSetLabel describes the whole set, while each ROI has its own name.
+    rtds=create_rtss_dataset(dicomsSorted,structure_set_label,series_number,series_description)
 
     # Structure Set ROI Sequence
     structure_set_roi_sequence = rtds.StructureSetROISequence
-    rtds.StructureSetLabel = structure_label
+    rtds.StructureSetLabel = structure_set_label
 
     print('Number of ROIs:',numberOfROIs)
     # Loop over ROIs
@@ -312,7 +324,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
         structure_set_roi = Dataset()
         structure_set_roi.ROINumber = str(ROI)
         structure_set_roi.ReferencedFrameOfReferenceUID = ds.FrameOfReferenceUID 
-        structure_set_roi.ROIName = structure_label
+        structure_set_roi.ROIName = structure_labels[ROI-1]
         structure_set_roi.ROIGenerationAlgorithm = 'AUTOMATIC'
         structure_set_roi_sequence.append(structure_set_roi)
 	
@@ -339,7 +351,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
             #roi_contour.ContourSequence = contour_sequence
 
             # Loop over contour sequences in this slice
-            numberOfContoursInThisSlice = len(AllCoordinates[slice])
+            numberOfContoursInThisSlice = len(AllCoordinates[ROI-1][slice])
             if numberOfContoursInThisSlice < 1: continue
 
             # Contour Image Sequence
@@ -351,7 +363,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
 
             for c in range(numberOfContoursInThisSlice):
 
-                currentCoordinates = AllCoordinates[slice][c]
+                currentCoordinates = AllCoordinates[ROI-1][slice][c]
                 
                 # Contour Sequence: Contour 1
                 contour = Dataset()
@@ -380,7 +392,7 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
         rtroi_observations.ObservationNumber = str(ROI)
         rtroi_observations.ReferencedROINumber = str(ROI)
         rtroi_observations.RTROIInterpretedType = 'ORGAN'
-        rtroi_observations.ROIObservationLabel = structure_label
+        rtroi_observations.ROIObservationLabel = structure_labels[ROI-1]
         rtroi_observations.ROIInterpreter = ''
         rtroi_observations_sequence.append(rtroi_observations)
 
@@ -394,6 +406,26 @@ def convert(input_nifti_path: str, input_dicom_path: str, output_dicom_path: str
     #rtds.save_as(RTDCM_name)
     print('RTSTRUCT saved as %s'%RTDCM_name)
     
+def parse_structure_labels(value):
+    labels = [label.strip() for label in value.split(',')]
+    if not labels or any(not label for label in labels):
+        raise argparse.ArgumentTypeError('structure labels must be a comma-separated list of non-empty labels')
+    return labels
+
+
+def parse_segmentation_intensities(value):
+    if value.strip().lower() == 'all':
+        return 'all'
+    try:
+        intensities = [int(item.strip()) for item in value.split(',')]
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "segmentation intensities must be 'all' or a comma-separated list of integers")
+    if not intensities:
+        raise argparse.ArgumentTypeError('at least one segmentation intensity must be supplied')
+    return intensities
+
+
 def get_parser():
     """
     Parse input arguments.
@@ -404,7 +436,13 @@ def get_parser():
     parser.add_argument("input_nifti", help="Path to input NIFTI image")
     parser.add_argument("input_dicom", help="Path to input DICOM images")
     parser.add_argument("output_dicom", help="Path to output DICOM image")
-    parser.add_argument("--structure_label",metavar="<string>",type=str,default="ROI1",help='structure set label [ROI1]')
+    parser.add_argument("--structure_labels", metavar="<label,...>", type=parse_structure_labels,
+                        default=["ROI1"], help='ordered, comma-separated structure labels [ROI1]')
+    parser.add_argument("--segmentation-intensities", metavar="<all|int,...>",
+                        type=parse_segmentation_intensities, default='all',
+                        help="'all' for one binary mask or ordered, comma-separated label intensities [all]")
+    parser.add_argument("--structure-set-label", metavar="<string>", default=None,
+                        help="structure-set label [the ROI label for single ROI; MULTI_ROI for multiple]")
     parser.add_argument("--series_description",metavar="<string>",type=str,default=None,help='series description for RTSTRUCT [None]')
     parser.add_argument("--series_number", metavar="<string>", type=str, default=None, help='Segmentation series number [None]')
     parser.add_argument("--tolerance",metavar="<float>", type=float, default=1,help="polygon approximation tolerance (mm) [1]")
@@ -415,5 +453,7 @@ def get_parser():
 if __name__ == "__main__":
     p = get_parser()
     print(p)
-    convert(p.input_nifti, p.input_dicom, p.output_dicom, p.structure_label,p.tolerance,p.min_poly_pts,p.series_number,p.series_description)
+    convert(p.input_nifti, p.input_dicom, p.output_dicom, p.structure_labels,
+            p.segmentation_intensities, p.structure_set_label, p.tolerance,
+            p.min_poly_pts, p.series_number, p.series_description)
     #write_rec_file(p.output_dicom,infiles=[p.input_dicom,p.input_nifti])
