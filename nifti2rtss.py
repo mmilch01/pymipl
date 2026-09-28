@@ -38,16 +38,20 @@ def concatenate_coordinates(coordinates_x, coordinates_y, coordinates_z):
 
 def sort_dcms_by_slice_pos(input_dicom_path,dcm_files):
     dcmss=[]
-    for idx,dcm in enumerate(dcm_files):        
-        ds = pydicom.dcmread(os.path.join(input_dicom_path,dcm), stop_before_pixels=True)
-        if idx==0:           
+    sortTag=None
+    for dcm in dcm_files:
+        dcm_path = dcm if os.path.isabs(dcm) else os.path.join(input_dicom_path,dcm)
+        ds = pydicom.dcmread(dcm_path, stop_before_pixels=True)
+        if sortTag is None:
            if 'ImagePositionPatient' in ds: sortTag='ImagePositionPatient'
            elif 'SliceLocation' in ds: sortTag='SliceLocation'
-           else: return None
-        if not sortTag in ds: return None
+           else: continue
+        if sortTag not in ds: continue
         if sortTag=='ImagePositionPatient': z=ds.ImagePositionPatient[2]
         else: z=ds.SliceLocation
         dcmss+=[dict(file=dcm,dataset=ds,z=z)]
+    if len(dcmss) < 1:
+        raise ValueError(f'No valid image-slice DICOM files found in {input_dicom_path}')
     return sorted(dcmss, key=lambda dcms: dcms['z'])
 
 def create_rtss_dataset(dicoms_sorted,structure_label,series_number=None,series_description=None):
@@ -170,17 +174,31 @@ def create_rtss_dataset(dicoms_sorted,structure_label,series_number=None,series_
     
 def get_valid_dicom_files(input_dicom_path):
     valid_files = []
+    required_tags = [
+        'SOPClassUID',
+        'SOPInstanceUID',
+        'PixelSpacing',
+        'SliceThickness',
+        'Rows',
+        'Columns',
+    ]
 
     for root, _, files in os.walk(input_dicom_path):
         for f in files:
             path = os.path.join(root, f)
             try:
                 # fast check: do not load pixel data
-                pydicom.dcmread(path, stop_before_pixels=True, force=False)
+                ds = pydicom.dcmread(path, stop_before_pixels=True, force=False)
+                if not all(tag in ds for tag in required_tags):
+                    continue
+                if 'ImagePositionPatient' not in ds and 'SliceLocation' not in ds:
+                    continue
                 valid_files.append(path)
             except Exception:
-                print(f'Invalid DICOM: {f}')
                 pass
+
+    if len(valid_files) < 1:
+        raise ValueError(f'No valid image-slice DICOM files found in {input_dicom_path}')
 
     return valid_files
     
