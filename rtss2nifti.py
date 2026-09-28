@@ -16,6 +16,7 @@ from skimage import measure
 from PIL import Image,ImageDraw
 
 import pydicom
+from pydicom.errors import InvalidDicomError
 from pydicom.dataset import Dataset
 from pydicom.sequence import Sequence
 from nibabel.nifti1 import Nifti1Image,Nifti1Header
@@ -103,7 +104,13 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
     '''
     
     #1. read the structural image.
-    dicomFiles = next(os.walk(input_structural_dicom))[2]
+    dicomFiles = []
+    for f in next(os.walk(input_structural_dicom))[2]:
+        try:
+            pydicom.dcmread(os.path.join(input_structural_dicom,f), stop_before_pixels=True)
+            dicomFiles.append(f)
+        except InvalidDicomError:
+            pass
     numberOfDicomImages = len(dicomFiles)
     dicomsSorted=sort_dcms_by_slice_pos(input_structural_dicom,dicomFiles,stop_before_pixels=False)
     ds_struct=dicomsSorted[0]['dataset']
