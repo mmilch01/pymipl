@@ -9,7 +9,7 @@ Requirements
 """
 
 import os
-from typing import Generator
+from typing import Generator, Tuple
 
 import numpy as np
 import nibabel as nib
@@ -128,7 +128,8 @@ def write_nifti(nii: sitk.Image, nii_path: str):
 
 def split_seg_channels(
     seg_data: highdicom.seg.Segmentation,
-) -> Generator[np.ndarray, None, None]:
+    segment_label: str = None,
+) -> Generator[Tuple[int, np.ndarray], None, None]:
     """
     Splits a DICOM SEG data array into separate channels for each segment.
     Args:
@@ -138,8 +139,12 @@ def split_seg_channels(
     """
     print(f"Number of segments: {seg_data.number_of_segments}")
     uids = [x[2] for x in seg_data.get_source_image_uids()]
+    label_filter = segment_label.casefold() if segment_label is not None else None
     for i in range(seg_data.number_of_segments):
-        yield seg_data.get_pixels_by_source_instance(
+        current_label = str(seg_data.SegmentSequence[i].SegmentLabel)
+        if label_filter is not None and current_label.casefold() != label_filter:
+            continue
+        yield i, seg_data.get_pixels_by_source_instance(
             uids,
             segment_numbers=[i + 1],
             ignore_spatial_locations=True,
@@ -165,25 +170,31 @@ def copy_sitk_image_info(src: sitk.Image, dst: sitk.Image) -> sitk.Image:
     return dst
 
 
-def dicomseg2nii(dicom_seg_path, nii_path, output_path):
+def resample_to_reference(src: sitk.Image, ref: sitk.Image) -> sitk.Image:
+    """
+    Resample a segmentation image onto the reference image grid.
+    """
+    resampler = sitk.ResampleImageFilter()
+    resampler.SetReferenceImage(ref)
+    resampler.SetInterpolator(sitk.sitkNearestNeighbor)
+    resampler.SetDefaultPixelValue(0)
+    return resampler.Execute(src)
+
+
+def dicomseg2nii(dicom_seg_path, nii_path, output_path, segment_label=None):
     dicom_seg = read_seg(dicom_seg_path)  # (z, x, y)
     sitk_dcm_seg = sitk.ReadImage(dicom_seg_path)
     nii = read_nii(nii_path)  # (x, y, z)
     out_paths = []
-    for i, seg_channel in enumerate(split_seg_channels(dicom_seg)):
+    for i, seg_channel in split_seg_channels(dicom_seg, segment_label):
         nii_out = sitk.GetImageFromArray(seg_channel)
         if nii_out.GetSize() != nii.GetSize():
-            raise ValueError(
-                f"Segmentation size {nii_out.GetSize()} does not match NIfTI size {nii.GetSize()}"
-            )
-        #nii_out = copy_sitk_image_info(sitk_dcm_seg, nii_out)
-        nii_out=copy_sitk_image_info(nii, nii_out)
+            nii_out = copy_sitk_image_info(sitk_dcm_seg, nii_out)
+            nii_out = resample_to_reference(nii_out, nii)
+        else:
+            nii_out = copy_sitk_image_info(nii, nii_out)
         nii_out = format_nifti(nii_out, nii)
-        nii_code = (
-            dicom_seg.SegmentSequence[i]
-            .SegmentedPropertyTypeCodeSequence[0]
-            .CodeMeaning
-        )
+        nii_code = dicom_seg.SegmentSequence[i].SegmentLabel
         nii_basename = os.path.basename(nii_path).split(".")[0]
         channel_output_path = format_output_path(
             output_path,
@@ -202,6 +213,7 @@ if __name__ == "__main__":
     parser.add_argument("nifti_ref", type=str, help="Path to the DICOM series directory")
     parser.add_argument("dcm_seg_dir", type=str, help="Path to the RT Struct DICOM file")
     parser.add_argument("out_dir", type=str, help="Label prefix for output files")
+    parser.add_argument("--segment_label", type=str, default=None, help="Segment Label to extract [all]")
     args = parser.parse_args()
-    dicomseg2nii(args.dcm_seg_dir,args.nifti_ref,args.out_dir)
+    dicomseg2nii(args.dcm_seg_dir,args.nifti_ref,args.out_dir,args.segment_label)
     
