@@ -41,6 +41,17 @@ DOCKER_REPO="${DOCKER_REPO:-docker.io}"
 [ -n "${REMOTE_IMAGE:-}" ] || exit_with_error "REMOTE_IMAGE is not set in config file."
 [ -d "${LOCAL_ENV_FOLDER:-}" ] || exit_with_error "LOCAL_ENV_FOLDER $LOCAL_ENV_FOLDER must be a directory."
 
+# Optional nnUNet results dataset copy for a trained model, e.g. Dataset006_Liver.
+nnunet_results_src="/tmp/empty-context"
+nnunet_dataset="NONE"
+if [ -n "${LOCAL_NNUNET_FOLDER:-}" ]; then
+  [ -d "${LOCAL_NNUNET_FOLDER:-}" ] || exit_with_error "LOCAL_NNUNET_FOLDER $LOCAL_NNUNET_FOLDER must be a directory."
+  [ -n "${LOCAL_NNUNET_DATASET:-}" ] || exit_with_error "LOCAL_NNUNET_DATASET must be set when LOCAL_NNUNET_FOLDER is provided."
+  nnunet_results_src="${LOCAL_NNUNET_FOLDER}/results/${LOCAL_NNUNET_DATASET}"
+  nnunet_dataset="$LOCAL_NNUNET_DATASET"
+  [ -d "$nnunet_results_src" ] || exit_with_error "nnUNet results dataset $nnunet_results_src must be a directory."
+fi
+
 tmp_dockerfile="$(mktemp "${TMPDIR:-/tmp}/Dockerfile.custom.XXXXXX")"
 #trap 'rm -f "$tmp_dockerfile"' EXIT
 echo "using temp dockerfile: $tmp_dockerfile"
@@ -55,17 +66,22 @@ rm -r /tmp/empty-context
 if [ ! -d "$LOCAL_ENV_FOLDER" ]; then mkdir -p /tmp/empty-context; LOCAL_ENV_FOLDER=/tmp/empty-context; fi
 if [ ! -d "$LOCAL_ALG_FOLDER" ]; then mkdir -p /tmp/empty-context; LOCAL_ALG_FOLDER=/tmp/empty-context; fi
 if [ ! -d "$LOCAL_RUNTIME_FOLDER" ]; then mkdir -p /tmp/empty-context; LOCAL_RUNTIME_FOLDER=/tmp/empty-context; fi
+if [ "$nnunet_results_src" = "/tmp/empty-context" ]; then mkdir -p /tmp/empty-context; fi
 
 echo docker build --tag "$LOCAL_IMAGE" \
   --build-context user_env="$LOCAL_ENV_FOLDER" \
   --build-context user_src="$LOCAL_ALG_FOLDER" \
   --build-context runtime_src="$LOCAL_RUNTIME_FOLDER" \
+  --build-context nnunet_results_src="$nnunet_results_src" \
+  --build-arg NNUNET_DATASET="$nnunet_dataset" \
   -f "$tmp_dockerfile" $PYMIPL_DIR
 
 docker build --tag "$LOCAL_IMAGE" \
   --build-context user_env="$LOCAL_ENV_FOLDER" \
   --build-context user_src="$LOCAL_ALG_FOLDER" \
   --build-context runtime_src="$LOCAL_RUNTIME_FOLDER" \
+  --build-context nnunet_results_src="$nnunet_results_src" \
+  --build-arg NNUNET_DATASET="$nnunet_dataset" \
   -f "$tmp_dockerfile" $PYMIPL_DIR
 
 if [ -n "$skip_deploy" ]; then exit 0; fi
