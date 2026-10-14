@@ -22,7 +22,7 @@ from pydicom.sequence import Sequence
 from nibabel.nifti1 import Nifti1Image,Nifti1Header
 import nibabel.nifti1
 
-from utils import write_rec_file
+#from utils import write_rec_file
 
 def sort_dcms_by_slice_pos(input_dicom_path,dcm_files,stop_before_pixels=True):
     '''
@@ -317,8 +317,8 @@ if __name__ == "__main__":
     rtss_to_nifti(p.in_rtss, p.in_struct_dir,p.out_roi_mask,
                   structural,exc_labels,p.separate_masks)
     
-    write_rec_file(p.out_roi_mask,main_extension='nii',infiles=[p.in_rtss,p.in_struct_dir])
-    write_rec_file(structural,main_extension='nii',infiles=[p.in_rtss,p.in_struct_dir])
+    #write_rec_file(p.out_roi_mask,main_extension='nii',infiles=[p.in_rtss,p.in_struct_dir])
+    #write_rec_file(structural,main_extension='nii',infiles=[p.in_rtss,p.in_struct_dir])
     
     print('done')
            
