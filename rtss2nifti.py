@@ -118,8 +118,16 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
 
     xPixelSize,yPixelSize=ds_struct.PixelSpacing[0],ds_struct.PixelSpacing[1]
     xyPixelSize=0.5*(xPixelSize+yPixelSize)
-    #for now; remember to update with DistanceBetweenSlices
-    zPixelSize=ds_struct.SliceThickness
+    if len(dicomsSorted)>1:
+        slice_positions=np.array([float(dicom['z']) for dicom in dicomsSorted])
+        slice_spacings=np.diff(slice_positions)
+        zPixelSize=float(np.median(slice_spacings))
+        if zPixelSize<=0 or not np.allclose(slice_spacings,zPixelSize,rtol=1e-3,atol=1e-3):
+            raise ValueError('Structural DICOM slices must have unique, uniformly spaced positions')
+    else:
+        zPixelSize=float(ds_struct.get('SpacingBetweenSlices',ds_struct.SliceThickness))
+    if zPixelSize<=0:
+        raise ValueError('Slice spacing must be positive')
 
     imwidth,imheight,imdepth=ds_struct.Rows,ds_struct.Columns,len(dicomsSorted)
     voxel_vol_mm3=xPixelSize*yPixelSize*zPixelSize
@@ -210,9 +218,10 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
             pts=contour.ContourData
             poly2d,z=pts2poly(pts,origin,mm_vox_size)
 
-            imslice=current_region_code*get_rasterized_poly_slice(poly2d,imwidth,imheight)
-            
-            rtss_voxels[roi_file_index][:,:,z]=imslice
+            if z is None or not 0<=z<imdepth:
+                raise ValueError('Contour {} for ROI {} maps outside the structural volume: {}'.format(k+1,roi_name,z))
+            imslice=get_rasterized_poly_slice(poly2d,imwidth,imheight).astype(bool)
+            current_voxels[:,:,z][imslice]=current_region_code
              
         #get region properties.
         try:
