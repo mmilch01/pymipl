@@ -41,5 +41,6 @@ COPY --chmod=755 xnat_workflow /opt/packages/pymipl/xnat_workflow
 COPY --chmod=755 --from=user_env / /opt/packages/user/env_repo/
 COPY --chmod=755 --from=user_src / /opt/packages/user/alg_repo/
 COPY --chmod=755 --from=runtime_src / /opt/packages/user/runtime_repo/
-
+ARG NNUNET_DATASET=NONE
+COPY --chmod=755 --from=nnunet_results_src / /opt/nnunet/results/${NNUNET_DATASET}/
 #CMD ["/opt/bootstrap/bootstrap.sh"]
