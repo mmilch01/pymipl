@@ -180,8 +180,75 @@ def resample_to_reference(src: sitk.Image, ref: sitk.Image) -> sitk.Image:
     resampler.SetDefaultPixelValue(0)
     return resampler.Execute(src)
 
+def report_slices(name, image):
+    data = sitk.GetArrayFromImage(image)  # z, y, x
+    counts = np.count_nonzero(data, axis=(1, 2))
+    print(name)
+    print("  size:", image.GetSize())
+    print("  spacing:", image.GetSpacing())
+    print("  origin:", image.GetOrigin())
+    print("  direction:", image.GetDirection())
+    print("  nonempty slices:", np.flatnonzero(counts))
+    print("  voxel counts:", counts[counts > 0])
+
+
 
 def dicomseg2nii(dicom_seg_path, nii_path, output_path, segment_label=None):
+    dicom_seg = read_seg(dicom_seg_path)
+    pixels = dicom_seg.pixel_array
+    #DEBUG
+    #print("SEG stored array shape:", pixels.shape)
+    #print(
+    #    "Nonempty stored frames:",
+    #    np.flatnonzero(np.any(pixels != 0, axis=(1, 2)))
+    #)
+    ref = read_nii(nii_path)
+    out_paths = []
+    label_filter = segment_label.casefold() if segment_label is not None else None
+
+    volume = dicom_seg.get_volume(allow_missing_positions=True)
+
+    for segment in dicom_seg.SegmentSequence:
+        label = str(segment.SegmentLabel)
+        if label_filter is not None and label.casefold() != label_filter:
+            continue
+
+        segment_volume = dicom_seg.get_volume(
+          segment_numbers=[int(segment.SegmentNumber)],
+          combine_segments=True,
+          relabel=True,
+          allow_missing_positions=True
+        )
+        #nii_out = segment_volume.to_simpleitk()
+        # Highdicom array axes correspond to the columns of its affine.
+        affine = segment_volume.affine
+        spacing = np.linalg.norm(affine[:3, :3], axis=0)
+        direction = affine[:3, :3] / spacing
+        
+        # SimpleITK's NumPy interface expects axes in reverse order.
+        nii_out = sitk.GetImageFromArray(
+            np.transpose(segment_volume.array, (2, 1, 0)).astype(np.uint8)
+        )
+        nii_out.SetOrigin(tuple(float(v) for v in affine[:3, 3]))
+        nii_out.SetSpacing(tuple(float(v) for v in spacing))
+        nii_out.SetDirection(tuple(float(v) for v in direction.ravel()))
+        
+        #DEBUG
+        #report_slices("Before resampling", nii_out)
+        nii_out = resample_to_reference(nii_out, ref)
+        #DEBUG
+        #report_slices("After resampling", nii_out)
+
+        nii_basename = os.path.basename(nii_path).split(".")[0]
+        channel_output_path = format_output_path(
+            output_path, nii_basename, label
+        )
+        write_nifti(nii_out, channel_output_path)
+        out_paths.append(channel_output_path)
+
+    return out_paths
+
+def dicomseg2nii_old(dicom_seg_path, nii_path, output_path, segment_label=None):
     dicom_seg = read_seg(dicom_seg_path)  # (z, x, y)
     sitk_dcm_seg = sitk.ReadImage(dicom_seg_path)
     nii = read_nii(nii_path)  # (x, y, z)
