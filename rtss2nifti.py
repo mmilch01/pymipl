@@ -97,7 +97,7 @@ def voxel_array_from_sorted_dicoms(dicomsSorted):
     return voxels
 
 def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rtss_nii:str,
-                  output_struct_nii:str, exclude_labels:list, write_one_roi_per_file:bool):
+                  output_struct_nii:str, exclude_labels:list, write_one_roi_per_file:bool, verbose:bool=False):
     
     '''
     Convert RTSTRUCT and structural DICOM to a NIFTI mask.    
@@ -138,7 +138,7 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
     else: 
         rtss_voxels=[]
 
-    print('Voxel size: {} by {} by {} mm'.format(xPixelSize,yPixelSize,zPixelSize))
+    if verbose: print('Voxel size: {} by {} by {} mm'.format(xPixelSize,yPixelSize,zPixelSize))
 
     # Find position of first slice
     patientPosition = ds_struct.ImagePositionPatient    
@@ -147,8 +147,8 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
     mm_vox_size=np.array([1./xPixelSize,1./yPixelSize,1./zPixelSize])
     origin=np.array([patientPosition[0],patientPosition[1],patientStartingZ])
 
-    print('Patient position is ', patientPosition[:2])
-    print('First slice at ', patientStartingZ)
+    if verbose: print('Patient position is ', patientPosition[:2])
+    if verbose: print('First slice at ', patientStartingZ)
 
     #2. read the RTSTRUCT. 
     ds_rtss=pydicom.dcmread(input_rtstruct_dicom, stop_before_pixels=False)
@@ -159,7 +159,7 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
     roi_contour_sequence=rcs=ds_rtss[(0x3006,0x0039)]
 
     n=len(ssrs)
-    print ('Found {} structures'.format(n))    
+    if verbose: print ('Found {} structures'.format(n))
 
     roi_list=[]
     current_region_code=1
@@ -169,10 +169,10 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
         ss=ssrs[ind]
         roi_number=ss[(0x3006,0x0022)].value
         roi_name=re.sub(r'\W+', '', ss[(0x3006,0x0026)].value)
-        print('ROI number {}, name {}'.format(roi_number,roi_name))
+        if verbose: print('ROI number {}, name {}'.format(roi_number,roi_name))
         
         if roi_name.lower() in exclude_labels: 
-            print('skipping structure',roi_name)
+            if verbose: print('skipping structure',roi_name)
             continue
 
         roi_contour=None
@@ -185,17 +185,17 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
                 break
 
         if not roi_contour: 
-            print('WARNING: no matching roi contour sequence for this ROI')
+            if verbose: print('WARNING: no matching roi contour sequence for this ROI')
             continue
 
         display_color = roi_contour[0x3006,0x002a] if (0x3006,0x002a) in roi_contour else None    
-        print('display color:',display_color)
+        if verbose: print('display color:',display_color)
 
         if (0x3006,0x0040) in roi_contour:
             contour_sequence=roi_contour[0x3006,0x0040]
 
         else:
-            print('WARNING: no matching contour sequence for this ROI')
+            if verbose: print('WARNING: no matching contour sequence for this ROI')
             continue
         nContours=len(contour_sequence._value)
 
@@ -214,7 +214,7 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
             contour=contour_sequence[k]
             npts=contour.NumberOfContourPoints
             nptsAcc+=npts
-            print('Contour {}, number of points: {}'.format(k+1,npts))
+            if verbose: print('Contour {}, number of points: {}'.format(k+1,npts))
             pts=contour.ContourData
             poly2d,z=pts2poly(pts,origin,mm_vox_size)
 
@@ -230,7 +230,7 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
         except:
             vol_mm3=0
             
-        print('volume:',vol_mm3,'mm3')
+        if verbose: print('volume:',vol_mm3,'mm3')
 
         v=display_color.value
         color='0x{:02X}{:02X}{:02X}'.format(int(v[0]),int(v[1]),int(v[2]))
@@ -285,7 +285,7 @@ def rtss_to_nifti(input_rtstruct_dicom:str, input_structural_dicom:str,output_rt
 
     print('writing',output_struct_nii)
     nibabel.nifti1.save(nifti_image_struct,output_struct_nii)
-    print('done')    
+    print('done')
     
 def get_parser():
     """
@@ -303,6 +303,8 @@ def get_parser():
                         help="Comma separated list of ROI labels to exclude, case insensitive [None]")
     parser.add_argument("--separate_masks", action="store_true", default=False, help="write each ROI mask in a separate file [False]")
 
+    parser.add_argument("--verbose", action="store_true", default=False, help="print conversion details in addition to output filenames [False]")
+
     return parser.parse_args()
     
 if __name__ == "__main__":
@@ -315,10 +317,10 @@ if __name__ == "__main__":
         exc_labels[i]=exc_labels[i].lower()
         
     rtss_to_nifti(p.in_rtss, p.in_struct_dir,p.out_roi_mask,
-                  structural,exc_labels,p.separate_masks)
+                  structural,exc_labels,p.separate_masks,p.verbose)
     
     #write_rec_file(p.out_roi_mask,main_extension='nii',infiles=[p.in_rtss,p.in_struct_dir])
     #write_rec_file(structural,main_extension='nii',infiles=[p.in_rtss,p.in_struct_dir])
     
-    print('done')
+    if p.verbose: print('done')
            
